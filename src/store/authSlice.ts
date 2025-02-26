@@ -1,18 +1,6 @@
 
-import { createSlice } from '@reduxjs/toolkit';
-import type { PayloadAction } from '@reduxjs/toolkit';
-
-interface User {
-  email: string;
-  name: string;
-  displayName: string;
-}
-
-interface AuthState {
-  token: string | null;
-  user: User | null;
-  isAuthenticated: boolean;
-}
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import type { AuthState } from '@/types/auth';
 
 const initialState: AuthState = {
   token: localStorage.getItem('token'),
@@ -24,7 +12,7 @@ const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    setCredentials(state, action: PayloadAction<{ token: string; user: User }>) {
+    setCredentials(state, action: PayloadAction<{ token: string; user: AuthState['user'] }>) {
       state.token = action.payload.token;
       state.user = action.payload.user;
       state.isAuthenticated = true;

@@ -1,14 +1,16 @@
 
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import type { LoginCredentials, AuthResponse } from '@/types/auth';
+import type { RootState } from './store';
+
+const baseUrl = process.env.NEXT_PUBLIC_WC_API_BASE_URL || 'https://site.cataloghub.in/wp-json';
 
 export const woocommerceApi = createApi({
   reducerPath: 'woocommerceApi',
   baseQuery: fetchBaseQuery({
-    baseUrl: process.env.NEXT_PUBLIC_WC_API_BASE_URL || 'https://site.cataloghub.in/wp-json',
+    baseUrl,
     prepareHeaders: (headers, { getState }) => {
-      const state = getState() as { auth: { token: string | null } };
-      const token = state.auth.token;
+      const token = (getState() as RootState).auth.token;
       if (token) {
         headers.set('Authorization', `Bearer ${token}`);
       }
