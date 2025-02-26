@@ -4,29 +4,42 @@ import { Box, Youtube, CheckCircle, XCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import StatsCard from '@/components/StatsCard';
 import { Card } from '@/components/ui/card';
+import type { Collection, DashboardStats } from '@/types/api';
 
-// You can adjust this URL to match your FastAPI server port
-const API_URL = 'http://localhost:8000';
+const API_URL = 'http://bore.pub:58856';
+
+// Helper function to create Authorization header
+const getHeaders = () => ({
+  'Content-Type': 'application/json',
+  'Accept': 'application/json',
+  'Authorization': 'Basic ' + btoa('admin:password') // Replace with actual credentials
+});
 
 // API functions
-const fetchDashboardStats = async () => {
-  const response = await fetch(`${API_URL}/dashboard/stats`);
+const fetchDashboardStats = async (): Promise<DashboardStats> => {
+  const response = await fetch(`${API_URL}/dashboard/stats`, {
+    headers: getHeaders()
+  });
   if (!response.ok) {
     throw new Error('Failed to fetch dashboard stats');
   }
   return response.json();
 };
 
-const fetchRecentCollections = async () => {
-  const response = await fetch(`${API_URL}/collections/recent`);
+const fetchRecentCollections = async (): Promise<Collection[]> => {
+  const response = await fetch(`${API_URL}/collections?page=1&per_page=5`, {
+    headers: getHeaders()
+  });
   if (!response.ok) {
     throw new Error('Failed to fetch recent collections');
   }
   return response.json();
 };
 
-const fetchProcessingQueue = async () => {
-  const response = await fetch(`${API_URL}/videos/queue`);
+const fetchProcessingQueue = async (): Promise<Collection[]> => {
+  const response = await fetch(`${API_URL}/processing-queue`, {
+    headers: getHeaders()
+  });
   if (!response.ok) {
     throw new Error('Failed to fetch processing queue');
   }
@@ -51,12 +64,14 @@ const Index = () => {
   const { data: recentCollections } = useQuery({
     queryKey: ['recentCollections'],
     queryFn: fetchRecentCollections,
+    placeholderData: [],
   });
 
   // Fetch processing queue
   const { data: processingQueue } = useQuery({
     queryKey: ['processingQueue'],
     queryFn: fetchProcessingQueue,
+    placeholderData: [],
   });
 
   const stats = [
@@ -103,9 +118,14 @@ const Index = () => {
           <h2 className="text-xl font-semibold mb-4">Recent Collections</h2>
           {recentCollections?.length ? (
             <div className="space-y-2">
-              {recentCollections.map((collection: any) => (
+              {recentCollections.map((collection) => (
                 <div key={collection.id} className="p-2 border rounded">
-                  {collection.name}
+                  <div className="flex justify-between items-center">
+                    <span>{collection.name}</span>
+                    <span className="text-sm text-gray-500">
+                      {collection.total_products} products
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -118,9 +138,12 @@ const Index = () => {
           <h2 className="text-xl font-semibold mb-4">Processing Queue</h2>
           {processingQueue?.length ? (
             <div className="space-y-2">
-              {processingQueue.map((video: any) => (
-                <div key={video.id} className="p-2 border rounded">
-                  {video.name}
+              {processingQueue.map((collection) => (
+                <div key={collection.id} className="p-2 border rounded">
+                  <div className="flex justify-between items-center">
+                    <span>{collection.name}</span>
+                    <span className="text-sm text-gray-500">Processing...</span>
+                  </div>
                 </div>
               ))}
             </div>
