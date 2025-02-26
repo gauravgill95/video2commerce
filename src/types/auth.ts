@@ -10,13 +10,3 @@ export interface AuthResponse {
   user_nicename: string;
   user_display_name: string;
 }
-
-export interface AuthState {
-  token: string | null;
-  user: {
-    email: string;
-    name: string;
-    displayName: string;
-  } | null;
-  isAuthenticated: boolean;
-}

@@ -3,7 +3,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { woocommerceApi } from './api';
 import authReducer from './authSlice';
 
-export const store = configureStore({
+const store = configureStore({
   reducer: {
     [woocommerceApi.reducerPath]: woocommerceApi.reducer,
     auth: authReducer,
@@ -12,5 +12,7 @@ export const store = configureStore({
     getDefaultMiddleware().concat(woocommerceApi.middleware),
 });
 
-export type RootState = ReturnType<typeof store.getState>;
-export type AppDispatch = typeof store.dispatch;
+type RootState = ReturnType<typeof store.getState>;
+type AppDispatch = typeof store.dispatch;
+
+export { store, type RootState, type AppDispatch };
