@@ -1,22 +1,11 @@
 
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { SidebarProvider, Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
-import { Home, Youtube, Box, Settings, LogOut } from 'lucide-react';
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { logout } from '@/store/authSlice';
-import { toast } from 'sonner';
+import { Home, Youtube, Box, Settings } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
-  const dispatch = useAppDispatch();
-  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
-
-  const handleLogout = () => {
-    dispatch(logout());
-    toast.success('Logged out successfully');
-    navigate('/login');
-  };
 
   const menuItems = [
     { title: 'Dashboard', icon: Home, path: '/' },
@@ -24,10 +13,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     { title: 'Collections', icon: Box, path: '/collections' },
     { title: 'Settings', icon: Settings, path: '/settings' },
   ];
-
-  if (!isAuthenticated) {
-    return <main className="flex-1">{children}</main>;
-  }
 
   return (
     <SidebarProvider>
@@ -46,12 +31,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   ))}
-                  <SidebarMenuItem>
-                    <SidebarMenuButton onClick={handleLogout} className="flex items-center gap-2 text-error">
-                      <LogOut size={20} />
-                      <span>Logout</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
