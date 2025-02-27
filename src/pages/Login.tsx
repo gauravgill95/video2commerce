@@ -52,7 +52,7 @@ const Login = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-purple-50 to-white px-4 py-12 sm:px-6 lg:px-8">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-purple px-4 py-12 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md shadow-lg border-purple-100">
         <CardHeader className="space-y-1 pb-6 pt-8">
           <div className="flex justify-center mb-6">
@@ -78,7 +78,7 @@ const Login = () => {
                 placeholder="Enter your email or username"
                 disabled={isLoading}
                 required
-                className="border-purple-200 focus-visible:ring-purple-500"
+                className="border-purple"
               />
             </div>
             
@@ -95,7 +95,7 @@ const Login = () => {
                   placeholder="Enter your password"
                   disabled={isLoading}
                   required
-                  className="pr-10 border-purple-200 focus-visible:ring-purple-500"
+                  className="pr-10 border-purple"
                 />
                 <button
                   type="button"

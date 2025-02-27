@@ -1,3 +1,4 @@
+
 import { Store as StoreType } from '@/types/api';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
@@ -17,7 +18,10 @@ const useStoreState = create<StoreState>()(
       setStore: (store: StoreType) => {
         // Add to recent stores if not already there
         const recentStores = get().recentStores;
-        const storeExists = recentStores.some(s => s.url === store.url);
+        const storeExists = recentStores.some(s => 
+          (s.store_url && s.store_url === store.store_url) || 
+          (s.url && s.url === store.url)
+        );
         
         let updatedRecentStores = recentStores;
         if (!storeExists) {
