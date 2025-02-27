@@ -17,7 +17,7 @@ import { toast } from '@/hooks/use-toast';
 import { Store as StoreType } from '@/types/api';
 import { Loader2, Store as StoreIcon } from 'lucide-react';
 
-const API_URL = 'http://bore.pub:58856';
+import API_URL from '@/config/apiConfig';
 
 // Helper function to create Authorization header
 const getHeaders = () => ({
