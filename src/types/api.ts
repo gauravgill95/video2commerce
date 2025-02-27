@@ -89,11 +89,8 @@ export interface SignupRequest {
   email: string;
   password: string;
   username?: string;
-  business_name: string;
-  phone: string;
-  address: {
-    [key: string]: string;
-  };
+  site_title: string;
+  site_url: string;
 }
 
 export interface AuthResponse {

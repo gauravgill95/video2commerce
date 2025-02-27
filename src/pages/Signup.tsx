@@ -13,15 +13,8 @@ const Signup = () => {
     email: '',
     username: '',
     password: '',
-    business_name: '',
-    phone: '',
-    address: {
-      street: '',
-      city: '',
-      state: '',
-      postal_code: '',
-      country: '',
-    }
+    site_title: '',
+    site_url: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
@@ -44,28 +37,16 @@ const Signup = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    
-    if (name.includes('.')) {
-      const [parent, child] = name.split('.');
-      setFormData(prev => ({
-        ...prev,
-        [parent]: {
-          ...prev[parent as keyof typeof prev] as Record<string, string>,
-          [child]: value,
-        },
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value,
-      }));
-    }
+    setFormData(prev => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.email || !formData.password || !formData.business_name || !formData.phone) {
+    if (!formData.email || !formData.password || !formData.site_title || !formData.site_url) {
       toast.error('All fields are required');
       return;
     }
@@ -84,12 +65,15 @@ const Signup = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Create account</CardTitle>
-          <CardDescription>
-            Enter your information to create an account
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-purple-50 to-white px-4 py-12 sm:px-6 lg:px-8">
+      <Card className="w-full max-w-md shadow-lg border-purple-100">
+        <CardHeader className="space-y-1 pb-6 pt-8">
+          <div className="flex justify-center mb-6">
+            <div className="text-purple-600 font-bold text-2xl">CatalogHub</div>
+          </div>
+          <CardTitle className="text-2xl font-bold text-center">Create your store</CardTitle>
+          <CardDescription className="text-center">
+            Turn your videos into shoppable catalogs
           </CardDescription>
         </CardHeader>
         
@@ -108,6 +92,7 @@ const Signup = () => {
                 placeholder="Enter your email"
                 disabled={isLoading}
                 required
+                className="border-purple-200 focus-visible:ring-purple-500"
               />
             </div>
             
@@ -121,8 +106,9 @@ const Signup = () => {
                 type="text"
                 value={formData.username}
                 onChange={handleChange}
-                placeholder="Enter your username"
+                placeholder="Choose a username"
                 disabled={isLoading}
+                className="border-purple-200 focus-visible:ring-purple-500"
               />
             </div>
             
@@ -140,7 +126,7 @@ const Signup = () => {
                   placeholder="Create a password"
                   disabled={isLoading}
                   required
-                  className="pr-10"
+                  className="pr-10 border-purple-200 focus-visible:ring-purple-500"
                 />
                 <button
                   type="button"
@@ -157,106 +143,75 @@ const Signup = () => {
             </div>
             
             <div className="space-y-2">
-              <label htmlFor="business_name" className="text-sm font-medium">
-                Business Name
+              <label htmlFor="site_title" className="text-sm font-medium">
+                Store Name
               </label>
               <Input
-                id="business_name"
-                name="business_name"
+                id="site_title"
+                name="site_title"
                 type="text"
-                value={formData.business_name}
+                value={formData.site_title}
                 onChange={handleChange}
-                placeholder="Enter your business name"
+                placeholder="My Jewelry Store"
                 disabled={isLoading}
                 required
+                className="border-purple-200 focus-visible:ring-purple-500"
               />
             </div>
             
             <div className="space-y-2">
-              <label htmlFor="phone" className="text-sm font-medium">
-                Phone
+              <label htmlFor="site_url" className="text-sm font-medium">
+                Store URL
               </label>
-              <Input
-                id="phone"
-                name="phone"
-                type="tel"
-                value={formData.phone}
-                onChange={handleChange}
-                placeholder="Enter your phone number"
-                disabled={isLoading}
-                required
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Address</p>
-              <div className="grid grid-cols-1 gap-2">
-                <Input
-                  name="address.street"
-                  placeholder="Street"
-                  value={formData.address.street}
-                  onChange={handleChange}
-                  disabled={isLoading}
-                  required
-                />
-                <Input
-                  name="address.city"
-                  placeholder="City"
-                  value={formData.address.city}
-                  onChange={handleChange}
-                  disabled={isLoading}
-                  required
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <Input
-                    name="address.state"
-                    placeholder="State/Province"
-                    value={formData.address.state}
-                    onChange={handleChange}
-                    disabled={isLoading}
-                    required
-                  />
-                  <Input
-                    name="address.postal_code"
-                    placeholder="Postal Code"
-                    value={formData.address.postal_code}
-                    onChange={handleChange}
-                    disabled={isLoading}
-                    required
-                  />
+              <div className="flex">
+                <div className="flex items-center px-3 bg-gray-100 border border-r-0 rounded-l-md border-purple-200">
+                  <span className="text-sm text-gray-500">https://</span>
                 </div>
                 <Input
-                  name="address.country"
-                  placeholder="Country"
-                  value={formData.address.country}
+                  id="site_url"
+                  name="site_url"
+                  type="text"
+                  value={formData.site_url}
                   onChange={handleChange}
+                  placeholder="mystore"
                   disabled={isLoading}
                   required
+                  className="rounded-l-none border-purple-200 focus-visible:ring-purple-500"
                 />
+                <div className="flex items-center px-3 bg-gray-100 border border-l-0 rounded-r-md border-purple-200">
+                  <span className="text-sm text-gray-500">.cataloghub.in</span>
+                </div>
               </div>
+              <p className="text-xs text-gray-500 mt-1">
+                This will be the URL where your store is accessible.
+              </p>
             </div>
           </CardContent>
           
-          <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full" disabled={isLoading}>
+          <CardFooter className="flex flex-col space-y-4 px-6 pb-8">
+            <Button 
+              type="submit" 
+              className="w-full bg-purple-600 hover:bg-purple-700" 
+              disabled={isLoading}
+            >
               {isLoading ? (
                 <span className="flex items-center gap-2">
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                  Creating account...
+                  Creating store...
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
                   <UserPlus className="h-4 w-4" />
-                  Create account
+                  Create store
                 </span>
               )}
             </Button>
             
             <div className="text-center text-sm">
-              Already have an account?{" "}
+              Already have a store?{" "}
               <Button
                 variant="link"
-                className="p-0 text-primary"
+                className="p-0 text-purple-600"
                 onClick={() => navigate('/login')}
               >
                 Log in

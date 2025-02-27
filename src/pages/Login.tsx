@@ -52,11 +52,14 @@ const Login = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Log in</CardTitle>
-          <CardDescription>
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-purple-50 to-white px-4 py-12 sm:px-6 lg:px-8">
+      <Card className="w-full max-w-md shadow-lg border-purple-100">
+        <CardHeader className="space-y-1 pb-6 pt-8">
+          <div className="flex justify-center mb-6">
+            <div className="text-purple-600 font-bold text-2xl">CatalogHub</div>
+          </div>
+          <CardTitle className="text-2xl font-bold text-center">Log in to your store</CardTitle>
+          <CardDescription className="text-center">
             Enter your credentials to access your account
           </CardDescription>
         </CardHeader>
@@ -65,16 +68,17 @@ const Login = () => {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="username" className="text-sm font-medium">
-                Username
+                Email or Username
               </label>
               <Input
                 id="username"
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter your username"
+                placeholder="Enter your email or username"
                 disabled={isLoading}
                 required
+                className="border-purple-200 focus-visible:ring-purple-500"
               />
             </div>
             
@@ -91,7 +95,7 @@ const Login = () => {
                   placeholder="Enter your password"
                   disabled={isLoading}
                   required
-                  className="pr-10"
+                  className="pr-10 border-purple-200 focus-visible:ring-purple-500"
                 />
                 <button
                   type="button"
@@ -108,8 +112,12 @@ const Login = () => {
             </div>
           </CardContent>
           
-          <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full" disabled={isLoading}>
+          <CardFooter className="flex flex-col space-y-4 px-6 pb-8">
+            <Button 
+              type="submit" 
+              className="w-full bg-purple-600 hover:bg-purple-700" 
+              disabled={isLoading}
+            >
               {isLoading ? (
                 <span className="flex items-center gap-2">
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
@@ -124,13 +132,13 @@ const Login = () => {
             </Button>
             
             <div className="text-center text-sm">
-              Don't have an account?{" "}
+              Don't have a store?{" "}
               <Button
                 variant="link"
-                className="p-0 text-primary"
+                className="p-0 text-purple-600"
                 onClick={() => navigate('/signup')}
               >
-                Sign up
+                Create one
               </Button>
             </div>
           </CardFooter>
