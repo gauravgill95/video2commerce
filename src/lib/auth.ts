@@ -28,7 +28,7 @@ export const useAuthStore = create<AuthState>()(
       login: async (credentials: LoginRequest) => {
         set({ isLoading: true, error: null });
         try {
-          const response = await fetch(`${API_URL}/api/v1/login`, {
+          const response = await fetch(`${API_URL}/api/v1/auth/login`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -64,7 +64,7 @@ export const useAuthStore = create<AuthState>()(
       signup: async (data: SignupRequest) => {
         set({ isLoading: true, error: null });
         try {
-          const response = await fetch(`${API_URL}/api/v1/signup`, {
+          const response = await fetch(`${API_URL}/api/v1/auth/signup`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -102,7 +102,7 @@ export const useAuthStore = create<AuthState>()(
         try {
           const token = get().token;
           if (token) {
-            await fetch(`${API_URL}/api/v1/logout`, {
+            await fetch(`${API_URL}/api/v1/auth/logout`, {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${token}`,

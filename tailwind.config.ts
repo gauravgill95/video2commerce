@@ -26,11 +26,11 @@ export default {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         primary: {
-          DEFAULT: "#64748B",
+          DEFAULT: "#9333EA",
           foreground: "#FFFFFF",
         },
         secondary: {
-          DEFAULT: "#9333EA",
+          DEFAULT: "#7C3AED",
           foreground: "#FFFFFF",
         },
         success: {
@@ -61,6 +61,10 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+      },
+      backgroundImage: {
+        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+        'gradient-purple': 'linear-gradient(to bottom, #F5F3FF, #FFFFFF)',
       },
       keyframes: {
         "fade-in": {
