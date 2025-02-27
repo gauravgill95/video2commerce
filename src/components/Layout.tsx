@@ -1,13 +1,18 @@
+
 import React from 'react';
 import { SidebarProvider, Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
-import { Home, Youtube, Box, Settings, Store as StoreIcon } from 'lucide-react';
+import { Home, Youtube, Box, Settings, Store as StoreIcon, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import StoreSelector from './StoreSelector';
 import { Store } from '@/lib/store';
+import { useAuthStore } from '@/lib/auth';
+import { toast } from 'sonner';
+import { Button } from './ui/button';
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
   const currentStore = Store.useStore();
+  const { logout, user } = useAuthStore();
 
   const menuItems = [
     { title: 'Dashboard', icon: Home, path: '/' },
@@ -17,6 +22,12 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     { title: 'Settings', icon: Settings, path: '/settings' },
   ];
 
+  const handleLogout = async () => {
+    await logout();
+    toast.success('Logged out successfully');
+    navigate('/login');
+  };
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
@@ -25,6 +36,14 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             <div className="p-4">
               <StoreSelector />
             </div>
+            
+            {user && (
+              <div className="px-3 py-2 mb-2">
+                <p className="text-sm font-medium">Logged in as:</p>
+                <p className="text-sm truncate">{user.username || user.email}</p>
+              </div>
+            )}
+            
             <SidebarGroup>
               <SidebarGroupLabel>Menu</SidebarGroupLabel>
               <SidebarGroupContent>
@@ -62,6 +81,17 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 </SidebarGroupContent>
               </SidebarGroup>
             )}
+            
+            <div className="mt-auto p-4">
+              <Button 
+                variant="outline" 
+                className="w-full flex items-center gap-2" 
+                onClick={handleLogout}
+              >
+                <LogOut size={16} />
+                Logout
+              </Button>
+            </div>
           </SidebarContent>
         </Sidebar>
         <main className="flex-1 p-6 overflow-auto">

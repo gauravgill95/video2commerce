@@ -1,3 +1,4 @@
-const API_URL = 'http://bore.pub:40550';
+
+const API_URL = 'http://bore.pub:58856';
 
 export default API_URL; 

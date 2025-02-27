@@ -1,3 +1,4 @@
+
 export interface Product {
   id: number;
   name: string;
@@ -76,4 +77,28 @@ export interface StoreCollectionsResponse {
     current_page: number;
     per_page: number;
   };
+}
+
+// Auth related interfaces
+export interface LoginRequest {
+  username: string;
+  password: string;
+}
+
+export interface SignupRequest {
+  email: string;
+  password: string;
+  username?: string;
+  business_name: string;
+  phone: string;
+  address: {
+    [key: string]: string;
+  };
+}
+
+export interface AuthResponse {
+  success: boolean;
+  message?: string;
+  token?: string;
+  user?: any;
 }
