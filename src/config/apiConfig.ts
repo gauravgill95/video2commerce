@@ -1,3 +1,4 @@
-const API_URL = 'http://bore.pub:35142';
+
+const API_URL = 'http://localhost:8000';
 
 export default API_URL; 

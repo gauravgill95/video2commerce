@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { StoreCollectionsResponse, Collection } from '@/types/api';
@@ -69,22 +68,22 @@ const Store = () => {
   const stats = [
     {
       title: 'Total Collections',
-      value: currentStore.total_collections.toString(),
+      value: currentStore?.total_collections?.toString() ?? '0',
       icon: <Box size={24} />,
     },
     {
       title: 'Total Products',
-      value: currentStore.total_products.toString(),
+      value: currentStore?.total_products?.toString() ?? '0',
       icon: <Box size={24} />,
     },
     {
       title: 'Videos Processed',
-      value: currentStore.processing_stats.videos_processed.toString(),
+      value: currentStore?.processing_stats?.videos_processed?.toString() ?? '0',
       icon: <Youtube size={24} />,
     },
     {
       title: 'Pending Reviews',
-      value: currentStore.processing_stats.pending_reviews.toString(),
+      value: currentStore?.processing_stats?.pending_reviews?.toString() ?? '0',
       icon: <Clock size={24} />,
     },
   ];

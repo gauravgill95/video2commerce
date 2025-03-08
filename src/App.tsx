@@ -1,4 +1,3 @@
-
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
@@ -13,19 +12,9 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import { useAuthStore } from "./lib/auth";
+import { AuthGuard } from "./components/AuthGuard";
 
 const queryClient = new QueryClient();
-
-// Protected route component
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const isAuthenticated = useAuthStore(state => state.isAuthenticated);
-  
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-  
-  return <>{children}</>;
-};
 
 const App = () => {
   return (
@@ -42,52 +31,51 @@ const App = () => {
             <Route 
               path="/" 
               element={
-                <ProtectedRoute>
+                <AuthGuard>
                   <Layout>
                     <Index />
                   </Layout>
-                </ProtectedRoute>
+                </AuthGuard>
               } 
             />
             <Route 
               path="/process" 
               element={
-                <ProtectedRoute>
+                <AuthGuard>
                   <Layout>
                     <Process />
                   </Layout>
-                </ProtectedRoute>
+                </AuthGuard>
               } 
             />
             <Route 
               path="/collections" 
               element={
-                <ProtectedRoute>
+                <AuthGuard>
                   <Layout>
                     <Collections />
                   </Layout>
-                </ProtectedRoute>
+                </AuthGuard>
               } 
             />
             <Route 
               path="/store" 
               element={
-                <ProtectedRoute>
+                <AuthGuard>
                   <Layout>
                     <Store />
                   </Layout>
-                </ProtectedRoute>
+                </AuthGuard>
               } 
             />
             <Route 
               path="/settings"
-
               element={
-                <ProtectedRoute>
+                <AuthGuard>
                   <Layout>
                     <Settings />
                   </Layout>
-                </ProtectedRoute>
+                </AuthGuard>
               } 
             />
             
