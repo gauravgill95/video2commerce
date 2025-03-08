@@ -1,3 +1,4 @@
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
@@ -11,6 +12,7 @@ import Store from "./pages/Store";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import ProductReview from "./pages/ProductReview";
 import { useAuthStore } from "./lib/auth";
 import { AuthGuard } from "./components/AuthGuard";
 
@@ -44,6 +46,16 @@ const App = () => {
                 <AuthGuard>
                   <Layout>
                     <Process />
+                  </Layout>
+                </AuthGuard>
+              } 
+            />
+            <Route 
+              path="/review" 
+              element={
+                <AuthGuard>
+                  <Layout>
+                    <ProductReview />
                   </Layout>
                 </AuthGuard>
               } 

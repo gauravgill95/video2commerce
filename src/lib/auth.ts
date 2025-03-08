@@ -1,23 +1,13 @@
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import API_URL from '@/config/apiConfig';
-import { AuthResponse, LoginRequest, SignupRequest } from '@/types/api';
+import { AuthResponse, LoginRequest, SignupRequest, UserProfile } from '@/types/api';
 import { toast } from 'sonner';
 import React from 'react';
 
-interface User {
-  id: number;
-  username: string;
-  display_name: string;
-  email: string;
-  roles: string[];
-  site_id: number;
-  site_title: string;
-  site_url: string;
-}
-
 interface AuthState {
-  user: User | null;
+  user: UserProfile | null;
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -209,7 +199,7 @@ export const withAuth = (Component: React.ComponentType) => {
       checkAuth();
     }, [validateToken]);
     
-    // Fix: Properly render the Component using JSX
+    // Properly render the Component using JSX
     if (!isAuthenticated) {
       return null;
     }

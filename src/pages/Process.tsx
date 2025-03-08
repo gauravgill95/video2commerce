@@ -1,24 +1,21 @@
+
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { useMutation } from '@tanstack/react-query';
-import { toast } from '@/hooks/use-toast';
-import { ProcessVideoRequest } from '@/types';
+import { toast } from 'sonner';
+import { ProcessVideoRequest, ProcessingResult } from '@/types/api';
 import { Store } from '@/lib/store';
 import StoreSelector from '@/components/StoreSelector';
 import API_URL from '@/config/apiConfig';
-
-// Helper function to create Authorization header
-const getHeaders = () => ({
-  'Content-Type': 'application/json',
-  'Accept': 'application/json',
-  'Authorization': 'Basic ' + btoa('admin:password') // Replace with actual credentials
-});
+import { getAuthHeaders } from '@/lib/auth';
 
 const Process = () => {
+  const navigate = useNavigate();
   const currentStore = Store.useStore();
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [storeUrl, setStoreUrl] = useState(currentStore?.url || '');
@@ -34,9 +31,9 @@ const Process = () => {
   const processVideoMutation = useMutation({
     mutationFn: async (data: ProcessVideoRequest) => {
       console.log('Sending request:', data);
-      const response = await fetch(`${API_URL}/process-video`, {
+      const response = await fetch(`${API_URL}/process-video/`, {
         method: 'POST',
-        headers: getHeaders(),
+        headers: getAuthHeaders(),
         body: JSON.stringify(data),
       });
       
@@ -48,23 +45,20 @@ const Process = () => {
         throw new Error(errorData.message || 'Failed to process video');
       }
       
-      return response.json();
+      return response.json() as Promise<ProcessingResult>;
     },
-    onSuccess: () => {
-      toast({
-        title: 'Success',
-        description: 'Video has been submitted for processing',
-      });
+    onSuccess: (data) => {
+      toast.success('Video has been submitted for processing');
+      
+      // Navigate to review page with parameters
+      navigate(`/review?youtube_url=${encodeURIComponent(youtubeUrl)}&store_url=${encodeURIComponent(storeUrl)}`);
+      
       // Reset form
       setYoutubeUrl('');
       setAutoApprove(false);
     },
     onError: (error: Error) => {
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
-      });
+      toast.error(error.message);
     },
   });
 
@@ -72,20 +66,12 @@ const Process = () => {
     e.preventDefault();
     
     if (!youtubeUrl) {
-      toast({
-        title: 'Error',
-        description: 'YouTube URL is required',
-        variant: 'destructive',
-      });
+      toast.error('YouTube URL is required');
       return;
     }
     
     if (!storeUrl) {
-      toast({
-        title: 'Error',
-        description: 'Store URL is required',
-        variant: 'destructive',
-      });
+      toast.error('Store URL is required');
       return;
     }
     

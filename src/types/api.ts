@@ -4,16 +4,19 @@ export interface AuthResponse {
   success: boolean;
   message?: string;
   token?: string;
-  user?: {
-    display_name: string;
-    email: string;
-    id: number;
-    roles: string[];
-    site_id: number;
-    site_title: string;
-    site_url: string;
-    username: string;
-  };
+  user?: UserProfile;
+}
+
+export interface UserProfile {
+  id: number;
+  username?: string;
+  email?: string;
+  display_name?: string;
+  roles: string[];
+  site_id?: number;
+  site_title?: string;
+  store_url?: string;
+  is_admin?: boolean;
 }
 
 // Request Types
@@ -42,18 +45,27 @@ export interface BulkReviewRequest {
   review_all: boolean;
 }
 
+// Response Types
+export interface ProcessingResult {
+  collection_id: string;
+  collection_url: string;
+  total_products: number;
+  status: string;
+  products: ProductReviewResponse[];
+}
+
 // Model Types
 export interface Product {
-  id?: number;
+  id?: string;
   name: string;
   description: string;
-  price?: string | null;
+  price?: number | null;
   status: string;
   confidence_score: number;
   video_clip_url: string;
   thumbnail_url: string;
-  timestamp_start: string;
-  timestamp_end: string;
+  timestamp_start: number;
+  timestamp_end: number;
   created_at?: string;
 }
 
@@ -84,6 +96,23 @@ export interface CollectionMetadata {
   approved_products: number;
   rejected_products: number;
   pending_products: number;
+}
+
+export interface ProductReviewResponse {
+  id: string;
+  name: string;
+  price?: number | null;
+  status: string;
+  confidence_score: number;
+  description?: string | null;
+  video_clip_url?: string | null;
+  thumbnail_url?: string | null;
+  timestamp_start?: number | null;
+  timestamp_end?: number | null;
+  created_at?: string | null;
+  review_status?: string | null;
+  review_date?: string | null;
+  reviewer?: string | null;
 }
 
 export interface Collection {
@@ -120,6 +149,17 @@ export interface CollectionsList {
   };
 }
 
+export interface CollectionResponse {
+  id: number;
+  name: string;
+  url: string;
+  total_products: number;
+  approved_products: number;
+  draft_products: number;
+  rejected_products: number;
+  products: ProductReviewResponse[];
+}
+
 export interface ProcessingStats {
   total_videos_processed: number;
   total_products_detected: number;
@@ -145,7 +185,7 @@ export interface StoreUsage {
   subscription_expires: string;
 }
 
-export interface Store {
+export interface StoreDetails {
   store_url: string;
   store_title: string;
   owner_email: string;
@@ -156,7 +196,6 @@ export interface Store {
   recent_collections: CollectionSummary[];
   total_products: number;
   products_by_status: Record<string, number>;
-  usage: StoreUsage;
   recent_activity: RecentActivity[];
   name?: string; // For backward compatibility
   url?: string; // For backward compatibility
@@ -172,13 +211,3 @@ export interface ReviewResponse {
 
 export type ProductStatus = 'draft' | 'approved' | 'rejected';
 export type ReviewStatus = 'pending' | 'approved' | 'rejected';
-
-export interface ProductReviewResponse {
-  id: number;
-  name: string;
-  status: string;
-  confidence_score: number;
-  review_status?: string;
-  review_date?: string;
-  reviewer?: string;
-}
