@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -13,6 +13,8 @@ import { getAuthHeaders } from '@/lib/auth';
 import { ProductReviewResponse, BulkReviewRequest } from '@/types/api';
 import API_URL from '@/config/apiConfig';
 import { useIsMobile } from '@/hooks/use-mobile';
+import ReactPlayer from 'react-player/youtube';
+import YouTubeSegmentPlayer from '@/components/YouTubeSegmentPlayer';
 
 const ProductReview = () => {
   const location = useLocation();
@@ -30,6 +32,8 @@ const ProductReview = () => {
   const [activeVideoProduct, setActiveVideoProduct] = useState<string | null>(null);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const [players, setPlayers] = useState<{[key: string]: any}>({});
+  const playerRefs = useRef<{[key: string]: HTMLDivElement | null}>({});
 
   // Validate required parameters
   useEffect(() => {
@@ -231,6 +235,80 @@ const ProductReview = () => {
     reviewMutation.mutate(requestData);
   };
 
+  // Add this function to generate a YouTube thumbnail URL
+  const getYouTubeThumbnail = (videoId: string, timestamp: number) => {
+    // YouTube allows getting thumbnails at specific timestamps
+    // Format: https://i3.ytimg.com/vi/[VIDEO_ID]/[quality].jpg
+    // We'll use the high quality version
+    return `https://i3.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+    
+    // Note: YouTube doesn't officially support timestamp-based thumbnails
+    // If you need exact frame thumbnails, you'd need a backend service to extract them
+  };
+
+  // Add this effect to initialize YouTube API
+  useEffect(() => {
+    // Load YouTube API
+    const tag = document.createElement('script');
+    tag.src = 'https://www.youtube.com/iframe_api';
+    const firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+
+    // Clean up
+    return () => {
+      // Destroy all players when component unmounts
+      Object.values(players).forEach(player => {
+        if (player && typeof player.destroy === 'function') {
+          player.destroy();
+        }
+      });
+    };
+  }, []);
+
+  // Add this function to initialize a player for a specific product
+  const initializePlayer = (productId: string, videoId: string, startTime: number, endTime: number) => {
+    if (!window.YT || !window.YT.Player) {
+      // YouTube API not loaded yet, try again in a moment
+      setTimeout(() => initializePlayer(productId, videoId, startTime, endTime), 100);
+      return;
+    }
+
+    if (players[productId]) {
+      // Player already exists
+      return;
+    }
+
+    const playerElement = playerRefs.current[productId];
+    if (!playerElement) return;
+
+    const player = new window.YT.Player(playerElement, {
+      videoId: videoId,
+      playerVars: {
+        autoplay: 1,
+        controls: 1,
+        modestbranding: 1,
+        rel: 0,
+        start: Math.floor(startTime),
+        end: Math.ceil(endTime),
+      },
+      events: {
+        onReady: (event: any) => {
+          event.target.seekTo(startTime);
+          event.target.playVideo();
+        },
+        onStateChange: (event: any) => {
+          // When video ends (state = 0), restart from the segment start
+          if (event.data === 0) {
+            event.target.seekTo(startTime);
+            event.target.playVideo();
+          }
+        },
+      },
+    });
+
+    setPlayers(prev => ({ ...prev, [productId]: player }));
+  };
+
   if (!youtubeUrl || !storeUrl) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
@@ -337,13 +415,15 @@ const ProductReview = () => {
             </CardHeader>
             <CardContent>
               <div className="aspect-video">
-                <iframe
+                <YouTubeSegmentPlayer
+                  videoId={videoId}
+                  startTime={0}
+                  endTime={0} // 0 means play the whole video
+                  autoplay={false}
+                  loop={false}
                   className="w-full h-full"
-                  src={`https://www.youtube.com/embed/${videoId}`}
-                  title="YouTube video player"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                ></iframe>
+                  isSourcePlayer={true}
+                />
               </div>
             </CardContent>
           </Card>
@@ -446,154 +526,158 @@ const ProductReview = () => {
                     {videoId && product.timestamp_start !== null && product.timestamp_end !== null && (
                       <div className="relative aspect-video bg-gray-100">
                         {activeVideoProduct === product.id ? (
-                          <iframe
+                          <YouTubeSegmentPlayer
+                            videoId={videoId}
+                            startTime={product.timestamp_start || 0}
+                            endTime={product.timestamp_end || 0}
+                            onClose={() => setActiveVideoProduct(null)}
+                            autoplay={true}
+                            loop={true}
                             className="w-full h-full"
-                            src={`https://www.youtube.com/embed/${videoId}?start=${
-                              Math.floor(product.timestamp_start || 0)
-                            }&end=${
-                              Math.ceil(product.timestamp_end || 0)
-                            }&autoplay=1&controls=1&showinfo=0&rel=0`}
-                            title={`Product: ${product.name}`}
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                          ></iframe>
+                          />
                         ) : (
-                          <>
-                            {product.thumbnail_url ? (
-                              <img 
-                                src={product.thumbnail_url} 
-                                alt={product.name} 
-                                className="w-full h-full object-cover cursor-pointer"
-                                onClick={() => setActiveVideoProduct(product.id)}
-                              />
-                            ) : (
-                              <div 
-                                className="w-full h-full flex items-center justify-center bg-gray-200 cursor-pointer"
-                                onClick={() => setActiveVideoProduct(product.id)}
-                              >
-                                <span className="text-sm text-gray-500">Click to play video clip</span>
-                              </div>
-                            )}
-                            <div 
-                              className="absolute inset-0 flex items-center justify-center cursor-pointer"
-                              onClick={() => setActiveVideoProduct(product.id)}
-                            >
-                              <div className="h-12 w-12 bg-black/70 rounded-full flex items-center justify-center">
-                                <div className="w-4 h-4 border-t-8 border-l-8 border-b-8 border-t-transparent border-l-white border-b-transparent ml-1"></div>
+                          // Thumbnail view
+                          <div 
+                            className="w-full h-full cursor-pointer relative overflow-hidden"
+                            onClick={() => setActiveVideoProduct(product.id)}
+                          >
+                            {/* Thumbnail image */}
+                            <img 
+                              src={product.thumbnail_url || `https://i3.ytimg.com/vi/${videoId}/hqdefault.jpg`}
+                              alt={product.name}
+                              className="w-full h-full object-cover transition-transform hover:scale-105"
+                            />
+                            
+                            {/* Play button overlay */}
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors">
+                              <div className="h-14 w-14 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center transition-all transform hover:scale-110">
+                                <div className="w-0 h-0 border-y-8 border-y-transparent border-l-12 border-l-white ml-1"></div>
                               </div>
                             </div>
-                          </>
+                            
+                            {/* Time indicators */}
+                            <div className="absolute bottom-2 left-2 right-2 flex justify-between">
+                              <div className="bg-black/70 text-white text-xs px-2 py-1 rounded">
+                                {formatTime(product.timestamp_start || 0)}
+                              </div>
+                              <div className="bg-black/70 text-white text-xs px-2 py-1 rounded">
+                                Duration: {formatDuration(product.timestamp_start || 0, product.timestamp_end || 0)}
+                              </div>
+                            </div>
+                          </div>
                         )}
                         
-                        <div className="absolute top-2 left-2">
+                        {/* Status badge */}
+                        <div className="absolute top-2 left-2 z-20">
                           <Badge
                             className={`${
                               product.status === 'approved'
-                                ? 'bg-green-500'
+                                ? 'bg-green-500 hover:bg-green-600'
                                 : product.status === 'private'
-                                ? 'bg-red-500'
-                                : 'bg-purple-500'
-                            }`}
+                                ? 'bg-red-500 hover:bg-red-600'
+                                : 'bg-purple-500 hover:bg-purple-600'
+                            } transition-colors`}
                           >
                             {product.status === 'draft' ? 'pending' : product.status}
                           </Badge>
                         </div>
                         
-                        <div className="absolute top-2 right-2">
-                          <Badge variant="outline" className="bg-white/80">
-                            {Math.round(product.confidence_score * 100)}% confidence
+                        {/* Confidence score */}
+                        <div className="absolute top-2 right-2 z-20">
+                          <Badge variant="outline" className="bg-white/90 border-none">
+                            {Math.round(product.confidence_score * 100)}% match
                           </Badge>
                         </div>
                         
-                        <div className="absolute bottom-2 left-2 right-2 flex justify-between">
-                          <Badge variant="outline" className="bg-black/60 text-white">
-                            {formatTime(product.timestamp_start || 0)}
-                          </Badge>
-                          <Badge variant="outline" className="bg-black/60 text-white">
-                            {formatTime(product.timestamp_end || 0)}
-                          </Badge>
+                        {/* Checkbox for selection */}
+                        <div className="absolute top-2 right-12 z-20">
+                          <div className="h-6 w-6 bg-white/90 rounded-full flex items-center justify-center">
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 cursor-pointer accent-purple-600"
+                              checked={selectedProducts.includes(product.id)}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                toggleProductSelection(product.id);
+                              }}
+                            />
+                          </div>
                         </div>
                       </div>
                     )}
                     
-                    <div className="absolute top-0 right-0 m-2">
-                      <input
-                        type="checkbox"
-                        className="h-5 w-5 cursor-pointer accent-purple-600"
-                        checked={selectedProducts.includes(product.id)}
-                        onChange={() => toggleProductSelection(product.id)}
-                      />
-                    </div>
-                  </div>
-                  
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-lg font-semibold line-clamp-1">
-                      {product.name}
-                    </CardTitle>
-                    {product.price && (
-                      <CardDescription>
-                        Price: ₹{product.price.toFixed(2)}
-                      </CardDescription>
-                    )}
-                  </CardHeader>
-                  
-                  <CardContent className="pb-2">
-                    <p className="text-sm text-muted-foreground line-clamp-3">
-                      {product.description || 'No description available'}
-                    </p>
+                    <CardHeader className="pb-2 pt-3">
+                      <CardTitle className="text-lg font-semibold line-clamp-1">
+                        {product.name}
+                      </CardTitle>
+                      {product.price && (
+                        <CardDescription className="font-medium text-green-700">
+                          ₹{product.price.toFixed(2)}
+                        </CardDescription>
+                      )}
+                    </CardHeader>
+                    
+                    <CardContent className="pb-2">
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {product.description || 'No description available'}
+                      </p>
 
-                    {isMobile && activeTab === 'pending' && (
-                      <div className="text-xs text-muted-foreground mt-2 text-center italic">
-                        Swipe right to approve, left to reject
-                      </div>
-                    )}
-                  </CardContent>
-                  
-                  <CardFooter className="justify-center">
-                    {isMobile ? (
-                      // For mobile, swipe instructions (actual swipe handling done above)
-                      activeTab === 'pending' ? null : (
-                        <Button
-                          variant="outline"
-                          onClick={() => handleProductReview(
-                            product.id, 
-                            product.status === 'approved' ? 'reject' : 'approve'
-                          )}
-                        >
-                          {product.status === 'approved' ? 'Change to Reject' : 'Change to Approve'}
-                        </Button>
-                      )
-                    ) : (
-                      // For desktop, regular buttons
-                      activeTab === 'pending' ? (
-                        <div className="grid grid-cols-2 gap-2 w-full">
-                          <Button
-                            className="bg-green-600 hover:bg-green-700 text-white"
-                            onClick={() => handleProductReview(product.id, 'approve')}
-                          >
-                            <Check className="h-4 w-4 mr-1" /> Approve
-                          </Button>
-                          
-                          <Button
-                            variant="destructive"
-                            onClick={() => handleProductReview(product.id, 'reject')}
-                          >
-                            <X className="h-4 w-4 mr-1" /> Reject
-                          </Button>
+                      {isMobile && activeTab === 'pending' && (
+                        <div className="text-xs text-muted-foreground mt-2 text-center italic">
+                          Swipe right to approve, left to reject
                         </div>
+                      )}
+                    </CardContent>
+                    
+                    <CardFooter className="justify-center pt-0 pb-3">
+                      {isMobile ? (
+                        // For mobile, swipe instructions (actual swipe handling done above)
+                        activeTab === 'pending' ? null : (
+                          <Button
+                            variant="outline"
+                            onClick={() => handleProductReview(
+                              product.id, 
+                              product.status === 'approved' ? 'reject' : 'approve'
+                            )}
+                            className="w-full"
+                          >
+                            {product.status === 'approved' ? 'Change to Reject' : 'Change to Approve'}
+                          </Button>
+                        )
                       ) : (
-                        <Button
-                          variant="outline"
-                          onClick={() => handleProductReview(
-                            product.id, 
-                            product.status === 'approved' ? 'reject' : 'approve'
-                          )}
-                        >
-                          {product.status === 'approved' ? 'Change to Reject' : 'Change to Approve'}
-                        </Button>
-                      )
-                    )}
-                  </CardFooter>
+                        // For desktop, improved buttons
+                        activeTab === 'pending' ? (
+                          <div className="grid grid-cols-2 gap-2 w-full">
+                            <Button
+                              className="bg-green-600 hover:bg-green-700 text-white transition-colors"
+                              onClick={() => handleProductReview(product.id, 'approve')}
+                            >
+                              <Check className="h-4 w-4 mr-1" /> Approve
+                            </Button>
+                            
+                            <Button
+                              variant="destructive"
+                              onClick={() => handleProductReview(product.id, 'reject')}
+                              className="transition-colors"
+                            >
+                              <X className="h-4 w-4 mr-1" /> Reject
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            onClick={() => handleProductReview(
+                              product.id, 
+                              product.status === 'approved' ? 'reject' : 'approve'
+                            )}
+                            className="w-full"
+                          >
+                            {product.status === 'approved' ? 'Change to Reject' : 'Change to Approve'}
+                          </Button>
+                        )
+                      )}
+                    </CardFooter>
+                  </div>
                 </Card>
               ))}
             </div>
@@ -667,6 +751,18 @@ const formatTime = (seconds: number): string => {
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
   return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+// New helper function to format duration
+const formatDuration = (start: number, end: number): string => {
+  const durationSeconds = Math.floor(end - start);
+  const mins = Math.floor(durationSeconds / 60);
+  const secs = durationSeconds % 60;
+  
+  if (mins > 0) {
+    return `${mins}m ${secs}s`;
+  }
+  return `${secs}s`;
 };
 
 export default ProductReview;
