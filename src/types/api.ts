@@ -43,6 +43,8 @@ export interface BulkReviewRequest {
   product_ids: string[];
   status: 'pending' | 'approved' | 'rejected';
   review_all: boolean;
+  youtube_url?: string;
+  store_url?: string;
 }
 
 // Response Types
@@ -160,6 +162,24 @@ export interface CollectionResponse {
   products: ProductReviewResponse[];
 }
 
+// Adding Store type for the StoreSelector component
+export interface Store {
+  store_url?: string;
+  url?: string; // For backward compatibility
+  store_title?: string;
+  name?: string; // For backward compatibility
+  owner_email?: string;
+  created_at?: string;
+  status?: string;
+  total_collections?: number;
+  collections_count?: number;
+  total_products?: number;
+  processing_stats?: ProcessingStats;
+}
+
+// Alias for StoreCollectionsResponse to match the code
+export type StoreCollectionsResponse = CollectionsList;
+
 export interface ProcessingStats {
   total_videos_processed: number;
   total_products_detected: number;
@@ -169,6 +189,8 @@ export interface ProcessingStats {
   processing_success_rate: number;
   average_products_per_video: number;
   last_processed_at: string | null;
+  videos_processed?: number; // For backward compatibility
+  pending_reviews?: number; // For backward compatibility
 }
 
 export interface RecentActivity {
@@ -200,6 +222,7 @@ export interface StoreDetails {
   name?: string; // For backward compatibility
   url?: string; // For backward compatibility
   total_collections?: number; // For backward compatibility
+  usage?: StoreUsage;
 }
 
 export interface ReviewResponse {

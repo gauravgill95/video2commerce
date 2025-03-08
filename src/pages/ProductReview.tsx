@@ -171,8 +171,8 @@ const ProductReview = () => {
       product_ids: selectedProducts,
       status: confirmAction === 'approve' ? 'approved' : 'rejected',
       review_all: reviewAll,
-      youtube_url: youtubeUrl,
       store_url: storeUrl,
+      youtube_url: youtubeUrl
     };
     
     reviewMutation.mutate(requestData);

@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { StoreCollectionsResponse, Collection } from '@/types/api';
+import { CollectionsList, Collection } from '@/types/api';
 import { Box, Youtube, Clock } from 'lucide-react';
 import StatsCard from '@/components/StatsCard';
 import { Store as StoreLib } from '@/lib/store';
@@ -14,7 +15,7 @@ import CollectionSearchFilter from '@/components/store/CollectionSearchFilter';
 import CollectionTabs from '@/components/store/CollectionTabs';
 
 // Helper function to fetch store collections
-const fetchStoreCollections = async (storeUrl: string, page = 1, perPage = 20): Promise<StoreCollectionsResponse> => {
+const fetchStoreCollections = async (storeUrl: string, page = 1, perPage = 20): Promise<CollectionsList> => {
   if (!storeUrl) {
     return { 
       collections: [], 
