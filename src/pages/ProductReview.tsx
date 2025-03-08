@@ -13,19 +13,23 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { getAuthHeaders } from '@/lib/auth';
 import { ProductReviewResponse, BulkReviewRequest } from '@/types/api';
 import API_URL from '@/config/apiConfig';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const ProductReview = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const queryParams = new URLSearchParams(location.search);
   const youtubeUrl = queryParams.get('youtube_url');
   const storeUrl = queryParams.get('store_url');
   
-  const [activeTab, setActiveTab] = useState('all');
+  const [activeTab, setActiveTab] = useState('pending');
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<'approve' | 'reject' | null>(null);
   const [activeVideoProduct, setActiveVideoProduct] = useState<string | null>(null);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
   
   // Validate required parameters
   useEffect(() => {
@@ -45,7 +49,11 @@ const ProductReview = () => {
         <p className="text-muted-foreground mb-4">
           Please start from the Process Video page to review products.
         </p>
-        <Button onClick={() => navigate('/process')}>
+        <Button 
+          onClick={() => navigate('/process')} 
+          className="mt-4"
+          variant="outline"
+        >
           Go to Process Video
         </Button>
       </div>
@@ -113,9 +121,56 @@ const ProductReview = () => {
     },
   });
   
+  // Handle product review (approve/reject)
+  const handleProductReview = (productId: string, action: 'approve' | 'reject') => {
+    if (!youtubeUrl || !storeUrl) {
+      toast.error('Missing required parameters');
+      return;
+    }
+    
+    const requestData: BulkReviewRequest = {
+      product_ids: [productId],
+      status: action === 'approve' ? 'approved' : 'rejected',
+      review_all: false,
+      approve_all: false,
+      store_url: storeUrl,
+      youtube_url: youtubeUrl
+    };
+    
+    reviewMutation.mutate(requestData);
+  };
+  
+  // Handle swipe gesture for mobile
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+  
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+  
+  const handleTouchEnd = (productId: string) => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+    
+    if (isLeftSwipe) {
+      // Left swipe for reject
+      handleProductReview(productId, 'reject');
+    } else if (isRightSwipe) {
+      // Right swipe for approve
+      handleProductReview(productId, 'approve');
+    }
+    
+    setTouchStart(null);
+    setTouchEnd(null);
+  };
+  
   // Filter products based on active tab
   const filteredProducts = products?.filter(product => {
-    if (activeTab === 'all') return true;
     if (activeTab === 'pending') return product.review_status === 'pending' || !product.review_status;
     if (activeTab === 'approved') return product.review_status === 'approved';
     if (activeTab === 'rejected') return product.review_status === 'rejected';
@@ -357,11 +412,8 @@ const ProductReview = () => {
       </div>
       
       {/* Product tabs and list */}
-      <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="bg-purple-100/50 text-purple-900 grid w-full grid-cols-4">
-          <TabsTrigger value="all" className="data-[state=active]:bg-white">
-            All ({products?.length || 0})
-          </TabsTrigger>
+      <Tabs defaultValue="pending" value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="bg-purple-100/50 text-purple-900 grid w-full grid-cols-3">
           <TabsTrigger value="pending" className="data-[state=active]:bg-white">
             Pending ({counts.pending})
           </TabsTrigger>
@@ -388,6 +440,9 @@ const ProductReview = () => {
                       ? 'ring-2 ring-primary ring-offset-2' 
                       : ''
                   }`}
+                  onTouchStart={isMobile ? handleTouchStart : undefined}
+                  onTouchMove={isMobile ? handleTouchMove : undefined}
+                  onTouchEnd={isMobile ? () => handleTouchEnd(product.id) : undefined}
                 >
                   <div className="relative">
                     {videoId && product.timestamp_start !== null && product.timestamp_end !== null && (
@@ -479,7 +534,7 @@ const ProductReview = () => {
                     </CardTitle>
                     {product.price && (
                       <CardDescription>
-                        Price: ${product.price.toFixed(2)}
+                        Price: ₹{product.price.toFixed(2)}
                       </CardDescription>
                     )}
                   </CardHeader>
@@ -488,45 +543,57 @@ const ProductReview = () => {
                     <p className="text-sm text-muted-foreground line-clamp-3">
                       {product.description || 'No description available'}
                     </p>
+
+                    {isMobile && activeTab === 'pending' && (
+                      <div className="text-xs text-muted-foreground mt-2 text-center italic">
+                        Swipe right to approve, left to reject
+                      </div>
+                    )}
                   </CardContent>
                   
                   <CardFooter className="justify-center">
-                    {product.review_status !== 'approved' && product.review_status !== 'rejected' ? (
-                      <div className="grid grid-cols-2 gap-2 w-full">
+                    {isMobile ? (
+                      // For mobile, swipe instructions (actual swipe handling done above)
+                      activeTab === 'pending' ? null : (
                         <Button
-                          className="bg-green-600 hover:bg-green-700 text-white"
-                          onClick={() => {
-                            setSelectedProducts([product.id]);
-                            setConfirmAction('approve');
-                            setConfirmDialogOpen(true);
-                          }}
+                          variant="outline"
+                          onClick={() => handleProductReview(
+                            product.id, 
+                            product.review_status === 'approved' ? 'reject' : 'approve'
+                          )}
                         >
-                          <Check className="h-4 w-4 mr-1" /> Approve
+                          {product.review_status === 'approved' ? 'Change to Reject' : 'Change to Approve'}
                         </Button>
-                        
-                        <Button
-                          variant="destructive"
-                          onClick={() => {
-                            setSelectedProducts([product.id]);
-                            setConfirmAction('reject');
-                            setConfirmDialogOpen(true);
-                          }}
-                        >
-                          <X className="h-4 w-4 mr-1" /> Reject
-                        </Button>
-                      </div>
+                      )
                     ) : (
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          // Reset status logic
-                          setSelectedProducts([product.id]);
-                          setConfirmAction(product.review_status === 'approved' ? 'reject' : 'approve');
-                          setConfirmDialogOpen(true);
-                        }}
-                      >
-                        {product.review_status === 'approved' ? 'Change to Reject' : 'Change to Approve'}
-                      </Button>
+                      // For desktop, regular buttons
+                      activeTab === 'pending' ? (
+                        <div className="grid grid-cols-2 gap-2 w-full">
+                          <Button
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                            onClick={() => handleProductReview(product.id, 'approve')}
+                          >
+                            <Check className="h-4 w-4 mr-1" /> Approve
+                          </Button>
+                          
+                          <Button
+                            variant="destructive"
+                            onClick={() => handleProductReview(product.id, 'reject')}
+                          >
+                            <X className="h-4 w-4 mr-1" /> Reject
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          onClick={() => handleProductReview(
+                            product.id, 
+                            product.review_status === 'approved' ? 'reject' : 'approve'
+                          )}
+                        >
+                          {product.review_status === 'approved' ? 'Change to Reject' : 'Change to Approve'}
+                        </Button>
+                      )
                     )}
                   </CardFooter>
                 </Card>
@@ -536,7 +603,7 @@ const ProductReview = () => {
         </TabsContent>
       </Tabs>
       
-      {/* Confirmation dialog */}
+      {/* Confirmation dialog for bulk actions only */}
       <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
         <DialogContent>
           <DialogHeader>

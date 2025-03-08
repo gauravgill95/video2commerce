@@ -39,7 +39,7 @@ export interface ProcessVideoRequest {
   auto_approve: boolean;
 }
 
-// Updated to match the new API specification
+// Updated to match the new API specification for Bulk Review
 export interface BulkReviewRequest {
   product_ids: string[];
   status: 'pending' | 'approved' | 'rejected';
