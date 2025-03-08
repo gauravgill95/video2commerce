@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { SidebarProvider, Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
-import { Home, Youtube, Box, Settings, Store as StoreIcon, LogOut } from 'lucide-react';
+import { Home, Youtube, Box, Settings, Store as StoreIcon, LogOut, CheckSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import StoreSelector from './StoreSelector';
 import { Store } from '@/lib/store';
@@ -17,6 +17,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const menuItems = [
     { title: 'Dashboard', icon: Home, path: '/' },
     { title: 'Process Video', icon: Youtube, path: '/process' },
+    { title: 'Product Review', icon: CheckSquare, path: '/review' },
     { title: 'Collections', icon: Box, path: '/collections' },
     { title: 'Store Management', icon: StoreIcon, path: '/store' },
     { title: 'Settings', icon: Settings, path: '/settings' },

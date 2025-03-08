@@ -13,7 +13,6 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ProductReview from "./pages/ProductReview";
-import { useAuthStore } from "./lib/auth";
 import { AuthGuard } from "./components/AuthGuard";
 
 const queryClient = new QueryClient();
