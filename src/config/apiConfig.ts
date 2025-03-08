@@ -1,5 +1,4 @@
 
-// API URL for all service endpoints
-const API_URL = 'http://bore.pub:15500';
+const API_URL = 'http://localhost:8000';
 
-export default API_URL;
+export default API_URL; 

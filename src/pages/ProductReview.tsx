@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Check, X, ThumbsUp, ThumbsDown, AlertCircle, ArrowLeft } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +18,7 @@ const ProductReview = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const queryClient = useQueryClient();
   const queryParams = new URLSearchParams(location.search);
   const youtubeUrl = queryParams.get('youtube_url');
   const storeUrl = queryParams.get('store_url');
@@ -30,7 +30,7 @@ const ProductReview = () => {
   const [activeVideoProduct, setActiveVideoProduct] = useState<string | null>(null);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
-  
+
   // Validate required parameters
   useEffect(() => {
     if (!youtubeUrl || !storeUrl) {
@@ -39,29 +39,9 @@ const ProductReview = () => {
       return;
     }
   }, [youtubeUrl, storeUrl, navigate]);
-  
-  // If required parameters are missing, render a redirect message
-  if (!youtubeUrl || !storeUrl) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh]">
-        <AlertCircle className="h-12 w-12 text-yellow-500 mb-4" />
-        <h2 className="text-xl font-semibold mb-2">Missing Parameters</h2>
-        <p className="text-muted-foreground mb-4">
-          Please start from the Process Video page to review products.
-        </p>
-        <Button 
-          onClick={() => navigate('/process')} 
-          className="mt-4"
-          variant="outline"
-        >
-          Go to Process Video
-        </Button>
-      </div>
-    );
-  }
-  
+
   // Fetch products for the YouTube video
-  const { data: products, isLoading, error, refetch } = useQuery({
+  const { data: products, isLoading, error } = useQuery({
     queryKey: ['products', youtubeUrl, storeUrl],
     queryFn: async () => {
       const response = await fetch(
@@ -77,7 +57,7 @@ const ProductReview = () => {
     },
     enabled: !!youtubeUrl && !!storeUrl,
   });
-  
+
   // Mutations for approving and rejecting products
   const reviewMutation = useMutation({
     mutationFn: async (data: BulkReviewRequest) => {
@@ -85,7 +65,6 @@ const ProductReview = () => {
         ? '/api/v1/collections/approve' 
         : '/api/v1/collections/reject';
       
-      // Convert for new API format
       const apiPayload = {
         product_ids: data.product_ids,
         approve_all: data.review_all,
@@ -112,7 +91,8 @@ const ProductReview = () => {
           : 'Products rejected successfully'
       );
       setSelectedProducts([]);
-      refetch();
+      // Invalidate and refetch the products query
+      queryClient.invalidateQueries({ queryKey: ['products', youtubeUrl, storeUrl] });
       setConfirmDialogOpen(false);
     },
     onError: (error: Error) => {
@@ -120,7 +100,26 @@ const ProductReview = () => {
       setConfirmDialogOpen(false);
     },
   });
-  
+
+  // Filter products based on active tab and status
+  const filteredProducts = products?.filter(product => {
+    if (activeTab === 'pending') return product.status === 'draft';
+    if (activeTab === 'approved') return product.status === 'approved';
+    if (activeTab === 'rejected') return product.status === 'private';
+    return true;
+  }) || [];
+
+  // Calculate counts for each status
+  const counts = (products || []).reduce(
+    (acc, product) => {
+      if (product.status === 'draft') acc.pending++;
+      else if (product.status === 'approved') acc.approved++;
+      else if (product.status === 'private') acc.rejected++;
+      return acc;
+    },
+    { pending: 0, approved: 0, rejected: 0 }
+  );
+
   // Handle product review (approve/reject)
   const handleProductReview = (productId: string, action: 'approve' | 'reject') => {
     if (!youtubeUrl || !storeUrl) {
@@ -139,7 +138,7 @@ const ProductReview = () => {
     
     reviewMutation.mutate(requestData);
   };
-  
+
   // Handle swipe gesture for mobile
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchEnd(null);
@@ -158,34 +157,14 @@ const ProductReview = () => {
     const isRightSwipe = distance < -50;
     
     if (isLeftSwipe) {
-      // Left swipe for reject
       handleProductReview(productId, 'reject');
     } else if (isRightSwipe) {
-      // Right swipe for approve
       handleProductReview(productId, 'approve');
     }
     
     setTouchStart(null);
     setTouchEnd(null);
   };
-  
-  // Filter products based on active tab
-  const filteredProducts = products?.filter(product => {
-    if (activeTab === 'pending') return product.review_status === 'pending' || !product.review_status;
-    if (activeTab === 'approved') return product.review_status === 'approved';
-    if (activeTab === 'rejected') return product.review_status === 'rejected';
-    return true;
-  }) || [];
-  
-  // Calculate counts for each status
-  const counts = (products || []).reduce(
-    (acc, product) => {
-      const status = product.review_status || 'pending';
-      acc[status] = (acc[status] || 0) + 1;
-      return acc;
-    },
-    { pending: 0, approved: 0, rejected: 0 } as Record<string, number>
-  );
   
   // Handle product selection toggle
   const toggleProductSelection = (productId: string) => {
@@ -251,7 +230,26 @@ const ProductReview = () => {
     
     reviewMutation.mutate(requestData);
   };
-  
+
+  if (!youtubeUrl || !storeUrl) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
+        <AlertCircle className="h-12 w-12 text-yellow-500 mb-4" />
+        <h2 className="text-xl font-semibold mb-2">Missing Parameters</h2>
+        <p className="text-muted-foreground mb-4">
+          Please start from the Process Video page to review products.
+        </p>
+        <Button 
+          onClick={() => navigate('/process')} 
+          className="mt-4"
+          variant="outline"
+        >
+          Go to Process Video
+        </Button>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -490,14 +488,14 @@ const ProductReview = () => {
                         <div className="absolute top-2 left-2">
                           <Badge
                             className={`${
-                              product.review_status === 'approved'
+                              product.status === 'approved'
                                 ? 'bg-green-500'
-                                : product.review_status === 'rejected'
+                                : product.status === 'private'
                                 ? 'bg-red-500'
                                 : 'bg-purple-500'
                             }`}
                           >
-                            {product.review_status || 'pending'}
+                            {product.status === 'draft' ? 'pending' : product.status}
                           </Badge>
                         </div>
                         
@@ -559,10 +557,10 @@ const ProductReview = () => {
                           variant="outline"
                           onClick={() => handleProductReview(
                             product.id, 
-                            product.review_status === 'approved' ? 'reject' : 'approve'
+                            product.status === 'approved' ? 'reject' : 'approve'
                           )}
                         >
-                          {product.review_status === 'approved' ? 'Change to Reject' : 'Change to Approve'}
+                          {product.status === 'approved' ? 'Change to Reject' : 'Change to Approve'}
                         </Button>
                       )
                     ) : (
@@ -588,10 +586,10 @@ const ProductReview = () => {
                           variant="outline"
                           onClick={() => handleProductReview(
                             product.id, 
-                            product.review_status === 'approved' ? 'reject' : 'approve'
+                            product.status === 'approved' ? 'reject' : 'approve'
                           )}
                         >
-                          {product.review_status === 'approved' ? 'Change to Reject' : 'Change to Approve'}
+                          {product.status === 'approved' ? 'Change to Reject' : 'Change to Approve'}
                         </Button>
                       )
                     )}
