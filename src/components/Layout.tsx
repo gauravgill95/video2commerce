@@ -14,6 +14,23 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const currentStore = Store.useStore();
   const { logout, user } = useAuthStore();
 
+  const handleMenuItemClick = (path: string) => {
+    // Special handling for the review page to redirect to process page if direct access
+    if (path === '/review') {
+      navigate('/process');
+      return;
+    }
+    
+    // Normal navigation for other paths
+    navigate(path);
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    toast.success('Logged out successfully');
+    navigate('/login');
+  };
+
   const menuItems = [
     { title: 'Dashboard', icon: Home, path: '/' },
     { title: 'Process Video', icon: Youtube, path: '/process' },
@@ -22,12 +39,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     { title: 'Store Management', icon: StoreIcon, path: '/store' },
     { title: 'Settings', icon: Settings, path: '/settings' },
   ];
-
-  const handleLogout = async () => {
-    await logout();
-    toast.success('Logged out successfully');
-    navigate('/login');
-  };
 
   return (
     <SidebarProvider>
@@ -51,7 +62,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 <SidebarMenu>
                   {menuItems.map((item) => (
                     <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton onClick={() => navigate(item.path)} className="flex items-center gap-2">
+                      <SidebarMenuButton onClick={() => handleMenuItemClick(item.path)} className="flex items-center gap-2">
                         <item.icon size={20} />
                         <span>{item.title}</span>
                       </SidebarMenuButton>

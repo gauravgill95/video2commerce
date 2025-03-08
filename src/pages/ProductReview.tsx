@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -32,17 +31,30 @@ const ProductReview = () => {
     if (!youtubeUrl || !storeUrl) {
       toast.error('Missing required parameters');
       navigate('/process');
+      return;
     }
   }, [youtubeUrl, storeUrl, navigate]);
+  
+  // If required parameters are missing, render a redirect message
+  if (!youtubeUrl || !storeUrl) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
+        <AlertCircle className="h-12 w-12 text-yellow-500 mb-4" />
+        <h2 className="text-xl font-semibold mb-2">Missing Parameters</h2>
+        <p className="text-muted-foreground mb-4">
+          Please start from the Process Video page to review products.
+        </p>
+        <Button onClick={() => navigate('/process')}>
+          Go to Process Video
+        </Button>
+      </div>
+    );
+  }
   
   // Fetch products for the YouTube video
   const { data: products, isLoading, error, refetch } = useQuery({
     queryKey: ['products', youtubeUrl, storeUrl],
     queryFn: async () => {
-      if (!youtubeUrl || !storeUrl) {
-        return [];
-      }
-      
       const response = await fetch(
         `${API_URL}/api/v1/collections/by-youtube-url?youtube_url=${encodeURIComponent(youtubeUrl)}&store_url=${encodeURIComponent(storeUrl)}`,
         { headers: getAuthHeaders() }
@@ -127,11 +139,9 @@ const ProductReview = () => {
         selectedProducts.includes(product.id));
       
       if (allSelected) {
-        // Deselect all filtered products
         setSelectedProducts(selectedProducts.filter(id => 
           !filteredProducts.some(product => product.id === id)));
       } else {
-        // Select all filtered products
         const newSelected = [...selectedProducts];
         filteredProducts.forEach(product => {
           if (!newSelected.includes(product.id)) {
@@ -141,7 +151,6 @@ const ProductReview = () => {
         setSelectedProducts(newSelected);
       }
     } else {
-      // Select or deselect all products
       const allSelected = products && products.length === selectedProducts.length;
       setSelectedProducts(allSelected ? [] : (products || []).map(p => p.id));
     }
