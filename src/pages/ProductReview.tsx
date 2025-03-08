@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Check, X, ThumbsUp, ThumbsDown, AlertCircle, Play, ArrowLeft } from 'lucide-react';
+import { Check, X, ThumbsUp, ThumbsDown, AlertCircle, ArrowLeft } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,9 +23,9 @@ const ProductReview = () => {
   
   const [activeTab, setActiveTab] = useState('all');
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
-  const [isPlayingVideo, setIsPlayingVideo] = useState<string | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<'approve' | 'reject' | null>(null);
+  const [activeVideoProduct, setActiveVideoProduct] = useState<string | null>(null);
   
   // Validate required parameters
   useEffect(() => {
@@ -76,10 +77,18 @@ const ProductReview = () => {
         ? '/api/v1/collections/approve' 
         : '/api/v1/collections/reject';
       
+      // Convert for new API format
+      const apiPayload = {
+        product_ids: data.product_ids,
+        approve_all: data.review_all,
+        youtube_url: data.youtube_url,
+        store_url: data.store_url
+      };
+      
       const response = await fetch(`${API_URL}${endpoint}`, {
         method: 'POST',
         headers: getAuthHeaders(),
-        body: JSON.stringify(data),
+        body: JSON.stringify(apiPayload),
       });
       
       if (!response.ok) {
@@ -180,6 +189,7 @@ const ProductReview = () => {
       product_ids: selectedProducts,
       status: confirmAction === 'approve' ? 'approved' : 'rejected',
       review_all: reviewAll,
+      approve_all: reviewAll,
       store_url: storeUrl,
       youtube_url: youtubeUrl
     };
@@ -380,23 +390,48 @@ const ProductReview = () => {
                   }`}
                 >
                   <div className="relative">
-                    {product.thumbnail_url && (
+                    {videoId && product.timestamp_start !== null && product.timestamp_end !== null && (
                       <div className="relative aspect-video bg-gray-100">
-                        <img 
-                          src={product.thumbnail_url} 
-                          alt={product.name} 
-                          className="w-full h-full object-cover"
-                        />
-                        {product.video_clip_url && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="absolute inset-0 m-auto bg-black/40 rounded-full p-2 hover:bg-black/60"
-                            onClick={() => setIsPlayingVideo(product.id)}
-                          >
-                            <Play className="h-8 w-8 text-white" />
-                          </Button>
+                        {activeVideoProduct === product.id ? (
+                          <iframe
+                            className="w-full h-full"
+                            src={`https://www.youtube.com/embed/${videoId}?start=${
+                              Math.floor(product.timestamp_start || 0)
+                            }&end=${
+                              Math.ceil(product.timestamp_end || 0)
+                            }&autoplay=1&controls=1&showinfo=0&rel=0`}
+                            title={`Product: ${product.name}`}
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          ></iframe>
+                        ) : (
+                          <>
+                            {product.thumbnail_url ? (
+                              <img 
+                                src={product.thumbnail_url} 
+                                alt={product.name} 
+                                className="w-full h-full object-cover cursor-pointer"
+                                onClick={() => setActiveVideoProduct(product.id)}
+                              />
+                            ) : (
+                              <div 
+                                className="w-full h-full flex items-center justify-center bg-gray-200 cursor-pointer"
+                                onClick={() => setActiveVideoProduct(product.id)}
+                              >
+                                <span className="text-sm text-gray-500">Click to play video clip</span>
+                              </div>
+                            )}
+                            <div 
+                              className="absolute inset-0 flex items-center justify-center cursor-pointer"
+                              onClick={() => setActiveVideoProduct(product.id)}
+                            >
+                              <div className="h-12 w-12 bg-black/70 rounded-full flex items-center justify-center">
+                                <div className="w-4 h-4 border-t-8 border-l-8 border-b-8 border-t-transparent border-l-white border-b-transparent ml-1"></div>
+                              </div>
+                            </div>
+                          </>
                         )}
+                        
                         <div className="absolute top-2 left-2">
                           <Badge
                             className={`${
@@ -410,11 +445,13 @@ const ProductReview = () => {
                             {product.review_status || 'pending'}
                           </Badge>
                         </div>
+                        
                         <div className="absolute top-2 right-2">
                           <Badge variant="outline" className="bg-white/80">
                             {Math.round(product.confidence_score * 100)}% confidence
                           </Badge>
                         </div>
+                        
                         <div className="absolute bottom-2 left-2 right-2 flex justify-between">
                           <Badge variant="outline" className="bg-black/60 text-white">
                             {formatTime(product.timestamp_start || 0)}
@@ -453,32 +490,44 @@ const ProductReview = () => {
                     </p>
                   </CardContent>
                   
-                  <CardFooter className="flex justify-between">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-green-600 border-green-600 hover:bg-green-50"
-                      onClick={() => {
-                        setSelectedProducts([product.id]);
-                        setConfirmAction('approve');
-                        setConfirmDialogOpen(true);
-                      }}
-                    >
-                      <Check className="h-4 w-4 mr-1" /> Approve
-                    </Button>
-                    
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-red-600 border-red-600 hover:bg-red-50"
-                      onClick={() => {
-                        setSelectedProducts([product.id]);
-                        setConfirmAction('reject');
-                        setConfirmDialogOpen(true);
-                      }}
-                    >
-                      <X className="h-4 w-4 mr-1" /> Reject
-                    </Button>
+                  <CardFooter className="justify-center">
+                    {product.review_status !== 'approved' && product.review_status !== 'rejected' ? (
+                      <div className="grid grid-cols-2 gap-2 w-full">
+                        <Button
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                          onClick={() => {
+                            setSelectedProducts([product.id]);
+                            setConfirmAction('approve');
+                            setConfirmDialogOpen(true);
+                          }}
+                        >
+                          <Check className="h-4 w-4 mr-1" /> Approve
+                        </Button>
+                        
+                        <Button
+                          variant="destructive"
+                          onClick={() => {
+                            setSelectedProducts([product.id]);
+                            setConfirmAction('reject');
+                            setConfirmDialogOpen(true);
+                          }}
+                        >
+                          <X className="h-4 w-4 mr-1" /> Reject
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          // Reset status logic
+                          setSelectedProducts([product.id]);
+                          setConfirmAction(product.review_status === 'approved' ? 'reject' : 'approve');
+                          setConfirmDialogOpen(true);
+                        }}
+                      >
+                        {product.review_status === 'approved' ? 'Change to Reject' : 'Change to Approve'}
+                      </Button>
+                    )}
                   </CardFooter>
                 </Card>
               ))}
@@ -486,41 +535,6 @@ const ProductReview = () => {
           )}
         </TabsContent>
       </Tabs>
-      
-      {/* Video player dialog */}
-      {isPlayingVideo && (
-        <Dialog open={!!isPlayingVideo} onOpenChange={() => setIsPlayingVideo(null)}>
-          <DialogContent className="max-w-4xl">
-            <DialogHeader>
-              <DialogTitle>
-                {products?.find(p => p.id === isPlayingVideo)?.name}
-              </DialogTitle>
-            </DialogHeader>
-            
-            <div className="aspect-video mt-2">
-              {videoId && isPlayingVideo && (
-                <iframe
-                  className="w-full h-full"
-                  src={`https://www.youtube.com/embed/${videoId}?start=${
-                    Math.floor(products?.find(p => p.id === isPlayingVideo)?.timestamp_start || 0)
-                  }&end=${
-                    Math.ceil(products?.find(p => p.id === isPlayingVideo)?.timestamp_end || 0)
-                  }&autoplay=1`}
-                  title="YouTube video player"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                ></iframe>
-              )}
-            </div>
-            
-            <DialogFooter className="mt-4">
-              <Button onClick={() => setIsPlayingVideo(null)}>
-                Close
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
       
       {/* Confirmation dialog */}
       <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>

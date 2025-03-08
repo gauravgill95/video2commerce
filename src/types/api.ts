@@ -39,10 +39,12 @@ export interface ProcessVideoRequest {
   auto_approve: boolean;
 }
 
+// Updated to match the new API specification
 export interface BulkReviewRequest {
   product_ids: string[];
   status: 'pending' | 'approved' | 'rejected';
-  review_all: boolean;
+  review_all: boolean; // For backward compatibility
+  approve_all?: boolean; // New field from the API
   youtube_url?: string;
   store_url?: string;
 }
