@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useBlocker } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Check, X, ThumbsUp, ThumbsDown, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Check, X, ThumbsUp, ThumbsDown, AlertCircle, ArrowLeft, Edit } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,11 +10,13 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { getAuthHeaders } from '@/lib/auth';
-import { ProductReviewResponse, BulkReviewRequest } from '@/types/api';
+import { ProductReviewResponse, BulkReviewRequest, ProductUpdate, ProductEditRequest } from '@/types/api';
 import API_URL from '@/config/apiConfig';
 import { useIsMobile } from '@/hooks/use-mobile';
 import ReactPlayer from 'react-player/youtube';
 import YouTubeSegmentPlayer from '@/components/YouTubeSegmentPlayer';
+import { EditProductDialog } from '@/components/EditProductDialog';
+import { PendingChangesBar } from '@/components/PendingChangesBar';
 
 const ProductReview = () => {
   const location = useLocation();
@@ -34,15 +36,52 @@ const ProductReview = () => {
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [players, setPlayers] = useState<{[key: string]: any}>({});
   const playerRefs = useRef<{[key: string]: HTMLDivElement | null}>({});
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [currentEditProduct, setCurrentEditProduct] = useState<ProductReviewResponse | null>(null);
+  const [pendingChanges, setPendingChanges] = useState<Record<string, ProductUpdate>>({});
 
-  // Validate required parameters
+  // Replace the navigation guard effects with useBlocker
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) => 
+      Object.keys(pendingChanges).length > 0 && 
+      currentLocation.pathname !== nextLocation.pathname
+  );
+
+  useEffect(() => {
+    if (blocker.state === "blocked") {
+      const userChoice = window.confirm('You have unsaved changes. Are you sure you want to leave?');
+      if (userChoice) {
+        setPendingChanges({});
+        blocker.proceed();
+      } else {
+        blocker.reset();
+      }
+    }
+  }, [blocker]);
+
+  // Keep the beforeunload handler for browser/tab close
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (Object.keys(pendingChanges).length > 0) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [pendingChanges]);
+
+  // Update the validation effect
   useEffect(() => {
     if (!youtubeUrl || !storeUrl) {
-      toast.error('Missing required parameters');
-      navigate('/process');
-      return;
+      if (Object.keys(pendingChanges).length === 0) {
+        toast.error('Missing required parameters');
+        navigate('/process');
+      }
     }
-  }, [youtubeUrl, storeUrl, navigate]);
+  }, [youtubeUrl, storeUrl, navigate, pendingChanges]);
 
   // Fetch products for the YouTube video
   const { data: products, isLoading, error } = useQuery({
@@ -102,6 +141,35 @@ const ProductReview = () => {
     onError: (error: Error) => {
       toast.error(error.message);
       setConfirmDialogOpen(false);
+    },
+  });
+
+  // Add this mutation near your other mutations
+  const editProductsMutation = useMutation({
+    mutationFn: async (data: ProductEditRequest) => {
+      const response = await fetch(`${API_URL}/api/v1/collections/edit-product`, {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update products');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      toast.success('All changes saved successfully');
+      setPendingChanges({});
+      // Invalidate and refetch the products query
+      queryClient.invalidateQueries({ queryKey: ['products', youtubeUrl, storeUrl] });
+    },
+    onError: (error: Error) => {
+      toast.error('Failed to save changes: ' + error.message);
     },
   });
 
@@ -307,6 +375,73 @@ const ProductReview = () => {
     });
 
     setPlayers(prev => ({ ...prev, [productId]: player }));
+  };
+
+  const handleEditProduct = (product: ProductReviewResponse) => {
+    setCurrentEditProduct(product);
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = (updates: Partial<ProductUpdate>) => {
+    if (!currentEditProduct) return;
+    
+    setPendingChanges(prev => ({
+      ...prev,
+      [currentEditProduct.id]: {
+        id: currentEditProduct.id,
+        ...prev[currentEditProduct.id],
+        ...updates
+      }
+    }));
+    
+    setEditDialogOpen(false);
+    setCurrentEditProduct(null);
+    
+    toast.success('Changes saved locally', {
+      description: 'Your changes will be applied when you save all changes',
+    });
+  };
+
+  const handleSaveAllChanges = async () => {
+    if (!youtubeUrl || !storeUrl) {
+      toast.error('Cannot save changes: Missing required parameters');
+      return;
+    }
+    
+    const editRequest: ProductEditRequest = {
+      youtube_url: youtubeUrl,
+      store_url: storeUrl,
+      products: Object.values(pendingChanges).map(change => ({
+        id: change.id,
+        name: change.name,
+        price: change.price,
+        description: change.description,
+        status: change.status
+      }))
+    };
+    
+    try {
+      await editProductsMutation.mutateAsync(editRequest);
+      // Success is handled in mutation callbacks
+    } catch (error) {
+      console.error('Failed to save changes:', error);
+      // Error is handled in mutation callbacks
+    }
+  };
+
+  const handleDiscardChanges = () => {
+    if (window.confirm('Are you sure you want to discard all changes?')) {
+      setPendingChanges({});
+      toast.success('Changes discarded');
+    }
+  };
+
+  // Add this helper function to get the current value (either pending or original)
+  const getProductValue = (product: ProductReviewResponse, field: keyof ProductUpdate) => {
+    if (pendingChanges[product.id] && pendingChanges[product.id][field] !== undefined) {
+      return pendingChanges[product.id][field];
+    }
+    return product[field];
   };
 
   if (!youtubeUrl || !storeUrl) {
@@ -517,6 +652,10 @@ const ProductReview = () => {
                     selectedProducts.includes(product.id) 
                       ? 'ring-2 ring-primary ring-offset-2' 
                       : ''
+                  } ${
+                    pendingChanges[product.id] 
+                      ? 'bg-purple-50/50' 
+                      : ''
                   }`}
                   onTouchStart={isMobile ? handleTouchStart : undefined}
                   onTouchMove={isMobile ? handleTouchMove : undefined}
@@ -571,14 +710,17 @@ const ProductReview = () => {
                         <div className="absolute top-2 left-2 z-20">
                           <Badge
                             className={`${
-                              product.status === 'approved'
+                              getProductValue(product, 'status') === 'approved'
                                 ? 'bg-green-500 hover:bg-green-600'
-                                : product.status === 'private'
+                                : getProductValue(product, 'status') === 'private'
                                 ? 'bg-red-500 hover:bg-red-600'
                                 : 'bg-purple-500 hover:bg-purple-600'
                             } transition-colors`}
                           >
-                            {product.status === 'draft' ? 'pending' : product.status}
+                            {getProductValue(product, 'status') === 'draft' ? 'pending' : getProductValue(product, 'status')}
+                            {pendingChanges[product.id]?.status && (
+                              <span className="ml-1 text-xs">(was: {product.status})</span>
+                            )}
                           </Badge>
                         </div>
                         
@@ -603,24 +745,71 @@ const ProductReview = () => {
                             />
                           </div>
                         </div>
+
+                        {/* Add this edit button */}
+                        <div className="absolute top-2 right-12 z-20">
+                          <button
+                            className="h-6 w-6 bg-white/90 rounded-full flex items-center justify-center hover:bg-white transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditProduct(product);
+                            }}
+                          >
+                            <Edit className="h-3 w-3 text-gray-700" />
+                          </button>
+                        </div>
+
+                        {/* Show pending changes indicator if the product has changes */}
+                        {pendingChanges[product.id] && (
+                          <div className="absolute top-2 left-2 z-20">
+                            <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+                              Edited
+                            </Badge>
+                          </div>
+                        )}
                       </div>
                     )}
                     
                     <CardHeader className="pb-2 pt-3">
                       <CardTitle className="text-lg font-semibold line-clamp-1">
-                        {product.name}
+                        {getProductValue(product, 'name')}
+                        {pendingChanges[product.id]?.name && (
+                          <Badge variant="outline" className="ml-2 text-xs">
+                            Edited
+                          </Badge>
+                        )}
                       </CardTitle>
-                      {product.price && (
+                      {getProductValue(product, 'price') && (
                         <CardDescription className="font-medium text-green-700">
-                          ₹{product.price.toFixed(2)}
+                          ₹{getProductValue(product, 'price')?.toFixed(2)}
                         </CardDescription>
                       )}
                     </CardHeader>
                     
                     <CardContent className="pb-2">
-                      <p className="text-sm text-muted-foreground line-clamp-2">
-                        {product.description || 'No description available'}
-                      </p>
+                      <div className="space-y-2">
+                        {getProductValue(product, 'price') && (
+                          <div className="text-sm">
+                            Price: ₹{getProductValue(product, 'price')?.toFixed(2)}
+                            {pendingChanges[product.id]?.price && (
+                              <span className="text-xs text-muted-foreground ml-2">
+                                (was: ₹{product.price?.toFixed(2)})
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        
+                        {getProductValue(product, 'description') && (
+                          <div className="text-sm text-muted-foreground line-clamp-2">
+                            {getProductValue(product, 'description')}
+                            {pendingChanges[product.id]?.description && (
+                              <Badge variant="outline" className="ml-2 text-xs">
+                                Edited
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                      </div>
 
                       {isMobile && activeTab === 'pending' && (
                         <div className="text-xs text-muted-foreground mt-2 text-center italic">
@@ -637,11 +826,11 @@ const ProductReview = () => {
                             variant="outline"
                             onClick={() => handleProductReview(
                               product.id, 
-                              product.status === 'approved' ? 'reject' : 'approve'
+                              getProductValue(product, 'status') === 'approved' ? 'reject' : 'approve'
                             )}
                             className="w-full"
                           >
-                            {product.status === 'approved' ? 'Change to Reject' : 'Change to Approve'}
+                            {getProductValue(product, 'status') === 'approved' ? 'Change to Reject' : 'Change to Approve'}
                           </Button>
                         )
                       ) : (
@@ -668,11 +857,11 @@ const ProductReview = () => {
                             variant="outline"
                             onClick={() => handleProductReview(
                               product.id, 
-                              product.status === 'approved' ? 'reject' : 'approve'
+                              getProductValue(product, 'status') === 'approved' ? 'reject' : 'approve'
                             )}
                             className="w-full"
                           >
-                            {product.status === 'approved' ? 'Change to Reject' : 'Change to Approve'}
+                            {getProductValue(product, 'status') === 'approved' ? 'Change to Reject' : 'Change to Approve'}
                           </Button>
                         )
                       )}
@@ -742,6 +931,21 @@ const ProductReview = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {Object.keys(pendingChanges).length > 0 && (
+        <PendingChangesBar
+          changesCount={Object.keys(pendingChanges).length}
+          onSave={handleSaveAllChanges}
+          onDiscard={handleDiscardChanges}
+        />
+      )}
+      
+      <EditProductDialog
+        open={editDialogOpen}
+        onClose={() => setEditDialogOpen(false)}
+        product={currentEditProduct}
+        onSave={handleSaveEdit}
+      />
     </div>
   );
 };
