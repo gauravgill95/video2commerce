@@ -1,5 +1,8 @@
+
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { CollectionsList, Collection } from '@/types/api';
 import { Box, Youtube, Clock } from 'lucide-react';
 import StatsCard from '@/components/StatsCard';

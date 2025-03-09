@@ -49,6 +49,21 @@ export interface BulkReviewRequest {
   store_url?: string;
 }
 
+// Adding the missing interfaces needed for product editing
+export interface ProductUpdate {
+  id: string;
+  name?: string;
+  price?: number;
+  description?: string;
+  status?: string;
+}
+
+export interface ProductEditRequest {
+  youtube_url: string;
+  store_url: string;
+  products: ProductUpdate[];
+}
+
 // Response Types
 export interface ProcessingResult {
   collection_id: string;
