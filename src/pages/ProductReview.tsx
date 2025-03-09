@@ -13,7 +13,6 @@ import { getAuthHeaders } from '@/lib/auth';
 import { ProductReviewResponse, BulkReviewRequest, ProductUpdate, ProductEditRequest } from '@/types/api';
 import API_URL from '@/config/apiConfig';
 import { useIsMobile } from '@/hooks/use-mobile';
-import ReactPlayer from 'react-player/youtube';
 import YouTubeSegmentPlayer from '@/components/YouTubeSegmentPlayer';
 import { EditProductDialog } from '@/components/EditProductDialog';
 import { PendingChangesBar } from '@/components/PendingChangesBar';
@@ -96,7 +95,14 @@ const ProductReview = () => {
         throw new Error('Failed to fetch products');
       }
       
-      return response.json() as Promise<ProductReviewResponse[]>;
+      const data = await response.json() as ProductReviewResponse[];
+      
+      // Map initial statuses correctly
+      return data.map(product => ({
+        ...product,
+        // Ensure rejected products have 'private' status
+        status: product.status === 'rejected' ? 'private' : product.status
+      }));
     },
     enabled: !!youtubeUrl && !!storeUrl,
   });
@@ -173,20 +179,46 @@ const ProductReview = () => {
     },
   });
 
-  // Filter products based on active tab and status
+  // Update the product filtering logic to use review_status
   const filteredProducts = products?.filter(product => {
-    if (activeTab === 'pending') return product.status === 'draft';
-    if (activeTab === 'approved') return product.status === 'approved';
-    if (activeTab === 'rejected') return product.status === 'private';
-    return true;
+    // Get the effective status (pending change or current status)
+    const effectiveStatus = pendingChanges[product.id]?.status || product.review_status;
+
+    switch (activeTab) {
+      case 'pending':
+        // Show products that haven't been reviewed yet
+        return !product.review_status && 
+               (!pendingChanges[product.id]?.status || 
+                !['approved', 'private'].includes(pendingChanges[product.id]?.status || ''));
+        
+      case 'approved':
+        // Show products that are either approved or pending approval
+        return effectiveStatus === 'approved';
+        
+      case 'rejected':
+        // Show products that are either rejected or pending rejection
+        return effectiveStatus === 'private';
+        
+      default:
+        return true;
+    }
   }) || [];
 
-  // Calculate counts for each status
+  // Update the counts calculation to use review_status
   const counts = (products || []).reduce(
     (acc, product) => {
-      if (product.status === 'draft') acc.pending++;
-      else if (product.status === 'approved') acc.approved++;
-      else if (product.status === 'private') acc.rejected++;
+      const effectiveStatus = pendingChanges[product.id]?.status || product.review_status;
+      
+      if (effectiveStatus === 'approved') {
+        acc.approved++;
+      } else if (effectiveStatus === 'private') {
+        acc.rejected++;
+      } else if (!product.review_status && 
+                 (!pendingChanges[product.id]?.status || 
+                  !['approved', 'private'].includes(pendingChanges[product.id]?.status || ''))) {
+        acc.pending++;
+      }
+      
       return acc;
     },
     { pending: 0, approved: 0, rejected: 0 }
