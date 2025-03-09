@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CollectionsList, Collection } from '@/types/api';
@@ -41,9 +40,14 @@ const Store = () => {
   const [sortBy, setSortBy] = useState('updated');
   const [page, setPage] = useState(1);
   const [perPage] = useState(20);
+  const [youtubeLink, setYoutubeLink] = useState('');
+  const [storeLink, setStoreLink] = useState('');
+  const [showLinkInputs, setShowLinkInputs] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
   
   const currentStore = StoreLib.useStore();
   const storeUrl = currentStore?.url || '';
+  const navigate = useNavigate();
   
   const { data, isLoading, error } = useQuery({
     queryKey: ['storeCollections', storeUrl, page, perPage, sortBy],
@@ -89,6 +93,40 @@ const Store = () => {
     },
   ];
   
+  const handleReviewProduct = () => {
+    if (!showLinkInputs) {
+      setShowLinkInputs(true);
+      return;
+    }
+    
+    // Validate links
+    if (!youtubeLink.trim()) {
+      toast.error('Please enter a YouTube video link');
+      return;
+    }
+    
+    if (!storeLink.trim()) {
+      toast.error('Please enter a store link');
+      return;
+    }
+    
+    // Navigate to review page with the links
+    navigate('/review', { 
+      state: { 
+        youtubeLink, 
+        storeLink,
+        // Include any other necessary data
+        productId: selectedProduct?.id,
+        productName: selectedProduct?.name
+      } 
+    });
+  };
+
+  const handleProductSelect = (product: any) => {
+    setSelectedProduct(product);
+    setShowLinkInputs(false); // Reset link inputs when selecting a new product
+  };
+  
   return (
     <div className="space-y-6 animate-fade-in">
       <StoreHeader store={currentStore} />
@@ -115,6 +153,57 @@ const Store = () => {
         pagination={data?.pagination}
         setPage={setPage}
       />
+
+      {selectedProduct && (
+        <div className="mt-4">
+          <h2 className="text-xl font-bold">{selectedProduct.name}</h2>
+          {showLinkInputs ? (
+            <div className="mt-4 space-y-4">
+              <div>
+                <label htmlFor="youtubeLink" className="block text-sm font-medium text-gray-700">
+                  YouTube Video Link
+                </label>
+                <input
+                  type="text"
+                  id="youtubeLink"
+                  value={youtubeLink}
+                  onChange={(e) => setYoutubeLink(e.target.value)}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  placeholder="https://www.youtube.com/watch?v=..."
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="storeLink" className="block text-sm font-medium text-gray-700">
+                  Store Link
+                </label>
+                <input
+                  type="text"
+                  id="storeLink"
+                  value={storeLink}
+                  onChange={(e) => setStoreLink(e.target.value)}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  placeholder="https://store.example.com/product/..."
+                />
+              </div>
+              
+              <button
+                onClick={handleReviewProduct}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                Continue to Review
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleReviewProduct}
+              className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              Review Product
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };
