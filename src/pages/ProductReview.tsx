@@ -199,16 +199,21 @@ const ProductReview = () => {
       return;
     }
     
-    const requestData: BulkReviewRequest = {
-      product_ids: [productId],
-      status: action === 'approve' ? 'approved' : 'rejected',
-      review_all: false,
-      approve_all: false,
-      store_url: storeUrl,
-      youtube_url: youtubeUrl
-    };
+    // Update the pending changes with the new status
+    setPendingChanges(prev => ({
+      ...prev,
+      [productId]: {
+        id: productId,
+        ...prev[productId], // Keep any existing changes
+        status: action === 'approve' ? 'approved' : 'private'
+      }
+    }));
     
-    reviewMutation.mutate(requestData);
+    toast.success(
+      action === 'approve' 
+        ? 'Product marked for approval' 
+        : 'Product marked for rejection'
+    );
   };
 
   // Handle swipe gesture for mobile
@@ -272,35 +277,32 @@ const ProductReview = () => {
   };
   
   // Handle bulk review action
-  const handleBulkReview = (action: 'approve' | 'reject') => {
-    if (selectedProducts.length === 0 && action !== 'approve' && action !== 'reject') {
-      toast.error('No products selected');
-      return;
-    }
+  const handleBulkReview = (productIds: string[], action: 'approve' | 'reject') => {
+    const newStatus = action === 'approve' ? 'approved' : 'private';
     
-    setConfirmAction(action);
-    setConfirmDialogOpen(true);
-  };
-  
-  // Handle confirm bulk review
-  const confirmBulkReview = (reviewAll: boolean) => {
-    if (!youtubeUrl || !storeUrl) {
-      toast.error('Missing required parameters');
-      return;
-    }
+    // Update all selected products in pending changes
+    const updates = productIds.reduce((acc, productId) => ({
+      ...acc,
+      [productId]: {
+        id: productId,
+        ...pendingChanges[productId], // Keep any existing changes
+        status: newStatus
+      }
+    }), {});
     
-    if (!confirmAction) return;
+    setPendingChanges(prev => ({
+      ...prev,
+      ...updates
+    }));
     
-    const requestData: BulkReviewRequest = {
-      product_ids: selectedProducts,
-      status: confirmAction === 'approve' ? 'approved' : 'rejected',
-      review_all: reviewAll,
-      approve_all: reviewAll,
-      store_url: storeUrl,
-      youtube_url: youtubeUrl
-    };
+    setSelectedProducts([]); // Clear selection
+    setConfirmDialogOpen(false);
     
-    reviewMutation.mutate(requestData);
+    toast.success(
+      action === 'approve' 
+        ? `${productIds.length} products marked for approval` 
+        : `${productIds.length} products marked for rejection`
+    );
   };
 
   // Add this function to generate a YouTube thumbnail URL
@@ -416,16 +418,14 @@ const ProductReview = () => {
         name: change.name,
         price: change.price,
         description: change.description,
-        status: change.status
+        status: change.status // Include status in the update
       }))
     };
     
     try {
       await editProductsMutation.mutateAsync(editRequest);
-      // Success is handled in mutation callbacks
     } catch (error) {
       console.error('Failed to save changes:', error);
-      // Error is handled in mutation callbacks
     }
   };
 
@@ -442,6 +442,21 @@ const ProductReview = () => {
       return pendingChanges[product.id][field];
     }
     return product[field];
+  };
+
+  // Update the PendingChangesBar to show different types of changes
+  const getPendingChangesSummary = () => {
+    const changes = Object.values(pendingChanges);
+    const approvals = changes.filter(c => c.status === 'approved').length;
+    const rejections = changes.filter(c => c.status === 'private').length;
+    const edits = changes.filter(c => c.name || c.price || c.description).length;
+    
+    const summary = [];
+    if (approvals) summary.push(`${approvals} approvals`);
+    if (rejections) summary.push(`${rejections} rejections`);
+    if (edits) summary.push(`${edits} edits`);
+    
+    return summary.join(', ');
   };
 
   if (!youtubeUrl || !storeUrl) {
@@ -520,7 +535,7 @@ const ProductReview = () => {
           <Button
             variant="default"
             size="sm"
-            onClick={() => handleBulkReview('approve')}
+            onClick={() => handleBulkReview(selectedProducts, 'approve')}
             disabled={selectedProducts.length === 0}
             className="bg-green-600 hover:bg-green-700"
           >
@@ -530,7 +545,7 @@ const ProductReview = () => {
           <Button
             variant="destructive"
             size="sm"
-            onClick={() => handleBulkReview('reject')}
+            onClick={() => handleBulkReview(selectedProducts, 'reject')}
             disabled={selectedProducts.length === 0}
           >
             <ThumbsDown className="h-4 w-4 mr-2" /> Reject Selected
@@ -615,7 +630,7 @@ const ProductReview = () => {
             <Button 
               variant="default" 
               className="w-full"
-              onClick={() => handleBulkReview('approve')}
+              onClick={() => handleBulkReview(selectedProducts, 'approve')}
               disabled={counts.pending === 0}
             >
               Complete Review
@@ -715,7 +730,9 @@ const ProductReview = () => {
                                 : getProductValue(product, 'status') === 'private'
                                 ? 'bg-red-500 hover:bg-red-600'
                                 : 'bg-purple-500 hover:bg-purple-600'
-                            } transition-colors`}
+                            } transition-colors ${
+                              pendingChanges[product.id]?.status ? 'animate-pulse' : ''
+                            }`}
                           >
                             {getProductValue(product, 'status') === 'draft' ? 'pending' : getProductValue(product, 'status')}
                             {pendingChanges[product.id]?.status && (
@@ -923,7 +940,7 @@ const ProductReview = () => {
             </Button>
             <Button
               variant={confirmAction === 'approve' ? 'default' : 'destructive'}
-              onClick={() => confirmBulkReview(false)}
+              onClick={() => handleBulkReview(selectedProducts, confirmAction === 'approve' ? 'approve' : 'reject')}
               disabled={selectedProducts.length === 0}
             >
               {confirmAction === 'approve' ? 'Approve Selected' : 'Reject Selected'}
@@ -935,6 +952,7 @@ const ProductReview = () => {
       {Object.keys(pendingChanges).length > 0 && (
         <PendingChangesBar
           changesCount={Object.keys(pendingChanges).length}
+          changesSummary={getPendingChangesSummary()}
           onSave={handleSaveAllChanges}
           onDiscard={handleDiscardChanges}
         />
@@ -944,6 +962,7 @@ const ProductReview = () => {
         open={editDialogOpen}
         onClose={() => setEditDialogOpen(false)}
         product={currentEditProduct}
+        pendingChanges={pendingChanges}
         onSave={handleSaveEdit}
       />
     </div>

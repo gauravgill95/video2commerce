@@ -4,16 +4,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ProductReviewResponse } from '@/types/api';
+import { ProductReviewResponse, ProductUpdate } from '@/types/api';
 
 interface EditProductDialogProps {
   open: boolean;
   onClose: () => void;
   product: ProductReviewResponse | null;
+  pendingChanges: Record<string, ProductUpdate>;
   onSave: (updates: { name?: string; price?: number; description?: string }) => void;
 }
 
-export function EditProductDialog({ open, onClose, product, onSave }: EditProductDialogProps) {
+export function EditProductDialog({ open, onClose, product, pendingChanges, onSave }: EditProductDialogProps) {
   const [formData, setFormData] = useState({
     name: '',
     price: '',
@@ -22,13 +23,14 @@ export function EditProductDialog({ open, onClose, product, onSave }: EditProduc
 
   useEffect(() => {
     if (product) {
+      const pendingChange = pendingChanges[product.id];
       setFormData({
-        name: product.name || '',
-        price: product.price?.toString() || '',
-        description: product.description || ''
+        name: pendingChange?.name || product.name || '',
+        price: (pendingChange?.price?.toString() || product.price?.toString() || ''),
+        description: pendingChange?.description || product.description || ''
       });
     }
-  }, [product]);
+  }, [product, pendingChanges]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,7 +45,12 @@ export function EditProductDialog({ open, onClose, product, onSave }: EditProduc
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Edit Product</DialogTitle>
+          <DialogTitle>
+            Edit Product
+            {product && pendingChanges[product.id] && (
+              <span className="ml-2 text-xs text-muted-foreground">(Has pending changes)</span>
+            )}
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -53,6 +60,11 @@ export function EditProductDialog({ open, onClose, product, onSave }: EditProduc
               value={formData.name}
               onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
             />
+            {product && pendingChanges[product.id]?.name && (
+              <p className="text-xs text-muted-foreground">
+                Original: {product.name}
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="price">Price</Label>
@@ -63,6 +75,11 @@ export function EditProductDialog({ open, onClose, product, onSave }: EditProduc
               value={formData.price}
               onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
             />
+            {product && pendingChanges[product.id]?.price && (
+              <p className="text-xs text-muted-foreground">
+                Original: ₹{product.price?.toFixed(2)}
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
@@ -71,6 +88,11 @@ export function EditProductDialog({ open, onClose, product, onSave }: EditProduc
               value={formData.description}
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
             />
+            {product && pendingChanges[product.id]?.description && (
+              <p className="text-xs text-muted-foreground">
+                Original: {product.description}
+              </p>
+            )}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
