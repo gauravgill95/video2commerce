@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { X, Play, Pause, SkipBack, SkipForward } from 'lucide-react';
 
@@ -220,9 +221,26 @@ const YouTubeSegmentPlayer: React.FC<YouTubeSegmentPlayerProps> = ({
 
   // Get thumbnail URL for the specific timestamp
   const getThumbnailUrl = () => {
-    // YouTube doesn't officially support timestamp-based thumbnails
-    // This is a best effort approach
-    return `https://i3.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+    // Use the maxresdefault image when possible for higher quality
+    // The storyboard API can be used to get a more accurate thumbnail, but it's not official
+    // and could be unstable
+    
+    // YouTube provides several thumbnail options
+    const thumbnailOptions = [
+      // Try to get a frame at exactly the right timestamp using the storyboard-based approach
+      `https://i.ytimg.com/vi_webp/${videoId}/maxres2.webp?v=${startTime}`,
+      // Try the highest quality default thumbnail
+      `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
+      // Fall back to high quality thumbnail
+      `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+      // Ultimate fallback
+      `https://i.ytimg.com/vi/${videoId}/0.jpg`,
+    ];
+    
+    // For now, use a simple approach by appending the startTime as a cache-busting parameter
+    // This doesn't actually change the image, but provides a way to potentially use different images
+    // if we implement server-side thumbnail extraction in the future
+    return thumbnailOptions[0] + `&t=${startTime}`;
   };
 
   // Add this useEffect to apply CSS to hide YouTube overlay elements
@@ -336,12 +354,28 @@ const YouTubeSegmentPlayer: React.FC<YouTubeSegmentPlayerProps> = ({
             src={getThumbnailUrl()} 
             alt="Video thumbnail" 
             className="w-full h-full object-cover"
+            onError={(e) => {
+              // If the timestamp-based thumbnail fails, try fallback options
+              const target = e.target as HTMLImageElement;
+              if (target.src.includes('maxres2.webp')) {
+                target.src = `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`;
+              } else if (target.src.includes('maxresdefault.jpg')) {
+                target.src = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+              } else if (target.src.includes('hqdefault.jpg')) {
+                target.src = `https://i.ytimg.com/vi/${videoId}/0.jpg`;
+              }
+            }}
           />
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="h-16 w-16 bg-black/60 rounded-full flex items-center justify-center">
               <Play className="h-8 w-8 text-white ml-1" />
             </div>
           </div>
+          {startTime > 0 && (
+            <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+              Starts at {formatTime(startTime)}
+            </div>
+          )}
         </div>
       )}
       
